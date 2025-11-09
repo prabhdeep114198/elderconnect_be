@@ -1,0 +1,182 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database Services
+  postgres-auth:
+    image: postgres:15
+    container_name: elder-auth-db
+    environment:
+      POSTGRES_DB: elder_auth_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_auth_data:/var/lib/postgresql/data
+    networks:
+      - elder-network
+
+  postgres-profile:
+    image: postgres:15
+    container_name: elder-profile-db
+    environment:
+      POSTGRES_DB: elder_profile_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_profile_data:/var/lib/postgresql/data
+    networks:
+      - elder-network
+
+  postgres-vitals:
+    image: postgres:15
+    container_name: elder-vitals-db
+    environment:
+      POSTGRES_DB: elder_vitals_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_vitals_data:/var/lib/postgresql/data
+    networks:
+      - elder-network
+
+  postgres-media:
+    image: postgres:15
+    container_name: elder-media-db
+    environment:
+      POSTGRES_DB: elder_media_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres_media_data:/var/lib/postgresql/data
+    networks:
+      - elder-network
+
+  postgres-audit:
+    image: postgres:15
+    container_name: elder-audit-db
+    environment:
+      POSTGRES_DB: elder_audit_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5436:5432"
+    volumes:
+      - postgres_audit_data:/var/lib/postgresql/data
+    networks:
+      - elder-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: elder-cache-db
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - elder-network
+
+  # Kafka and Zookeeper
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    container_name: elder-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - elder-network
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    container_name: elder-stream-broker
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: true
+    networks:
+      - elder-network
+
+  # Prometheus for Metrics
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: elder-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - elder-network
+
+  # Grafana for Visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: elder-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - elder-network
+
+  # Jaeger for Distributed Tracing
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: elder-jaeger
+    ports:
+      - "16686:16686"
+      - "14268:14268"
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    networks:
+      - elder-network
+
+  # Elder Connect API
+  elder-connect-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: elder-connect-api
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+    depends_on:
+      - postgres-auth
+      - postgres-profile
+      - postgres-vitals
+      - postgres-media
+      - postgres-audit
+      - redis
+      - kafka
+    networks:
+      - elder-network
+    volumes:
+      - ./logs:/app/logs
+
+volumes:
+  postgres_auth_data:
+  postgres_profile_data:
+  postgres_vitals_data:
+  postgres_media_data:
+  postgres_audit_data:
+  redis_data:
+  grafana_data:
+
+networks:
+  elder-network:
+    driver: bridge
