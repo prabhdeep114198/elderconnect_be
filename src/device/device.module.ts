@@ -7,7 +7,7 @@ import { Vitals } from './entities/vitals.entity';
 import { SOSAlert } from './entities/sos-alert.entity';
 import { KafkaService } from './services/kafka.service';
 import { AuditLogService } from '../common/services/audit-log.service';
-import { AuditLog } from '../common/entities/audit-log.entity';
+import { AuditLog } from '../common/services/entities/audit-log.entity';
 
 @Module({
   imports: [

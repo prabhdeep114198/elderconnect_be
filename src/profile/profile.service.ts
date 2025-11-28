@@ -37,7 +37,7 @@ export class ProfileService {
     const profile = this.profileRepository.create({
       userId,
       ...createProfileDto,
-      dateOfBirth: createProfileDto.dateOfBirth ? new Date(createProfileDto.dateOfBirth) : null,
+      dateOfBirth: createProfileDto.dateOfBirth ? new Date(createProfileDto.dateOfBirth) : undefined,
     });
 
     return this.profileRepository.save(profile);
@@ -76,12 +76,14 @@ export class ProfileService {
   async createMedication(userId: string, createMedicationDto: CreateMedicationDto): Promise<Medication> {
     const profile = await this.getProfile(userId);
 
-    const medication = this.medicationRepository.create({
+    const partialMedication: Partial<Medication> = {
       userProfileId: profile.id,
       ...createMedicationDto,
       startDate: new Date(createMedicationDto.startDate),
-      endDate: createMedicationDto.endDate ? new Date(createMedicationDto.endDate) : null,
-    });
+      endDate: createMedicationDto.endDate ? new Date(createMedicationDto.endDate) : undefined,
+    };
+
+    const medication = this.medicationRepository.create(partialMedication);
 
     return this.medicationRepository.save(medication);
   }
@@ -161,7 +163,7 @@ export class ProfileService {
       medicationId,
       ...logMedicationDto,
       scheduledTime: new Date(logMedicationDto.scheduledTime),
-      actualTime: logMedicationDto.actualTime ? new Date(logMedicationDto.actualTime) : null,
+      actualTime: logMedicationDto.actualTime ? new Date(logMedicationDto.actualTime) : undefined,
     });
 
     // Update medication stock if taken
@@ -212,8 +214,11 @@ export class ProfileService {
 
     Object.assign(log, {
       ...updateData,
-      actualTime: updateData.actualTime ? new Date(updateData.actualTime) : log.actualTime,
     });
+
+    if (updateData.actualTime !== undefined) {
+      log.actualTime = new Date(updateData.actualTime ?? Date.now());
+    }
 
     return this.medicationLogRepository.save(log);
   }
@@ -260,7 +265,7 @@ export class ProfileService {
       },
     });
 
-    const reminders = [];
+    const reminders: any[] = [];
 
     for (const medication of medications) {
       if (medication.schedule) {

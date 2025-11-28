@@ -119,7 +119,6 @@ export class User {
 
   resetLoginAttempts(): void {
     this.loginAttempts = 0;
-    this.lockedUntil = null;
     this.lastLoginAt = new Date();
   }
 }

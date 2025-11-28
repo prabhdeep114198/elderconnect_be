@@ -10,7 +10,7 @@ import { Device } from './entities/device.entity';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { LocalStrategy } from './strategies/local.strategy';
 import { AuditLogService } from '../common/services/audit-log.service';
-import { AuditLog } from '../common/entities/audit-log.entity';
+import { AuditLog } from '../common/services/entities/audit-log.entity';
 
 @Module({
   imports: [
@@ -24,7 +24,7 @@ import { AuditLog } from '../common/entities/audit-log.entity';
         signOptions: {
           expiresIn: configService.get<string>('jwt.expiresIn'),
         },
-      }),
+      }) as any,
       inject: [ConfigService],
     }),
   ],

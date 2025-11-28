@@ -6,7 +6,7 @@ import { MediaService } from './media.service';
 import { MediaFile } from './entities/media-file.entity';
 import { S3Service } from './services/s3.service';
 import { AuditLogService } from '../common/services/audit-log.service';
-import { AuditLog } from '../common/entities/audit-log.entity';
+import { AuditLog } from '../common/services/entities/audit-log.entity';
 
 @Module({
   imports: [

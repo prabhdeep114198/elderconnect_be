@@ -215,15 +215,19 @@ export class DeviceService {
     }
 
     const values = readings.map(r => r.value);
-    const average = values.reduce((sum, val) => sum + val, 0) / values.length;
-    const min = Math.min(...values);
-    const max = Math.max(...values);
+    const cleanValues = values.filter((v): v is number => v !== null);
+    const average = cleanValues.reduce((sum, val) => sum + val, 0) / values.length;
+    const min = Math.min(...cleanValues);
+    const max = Math.max(...cleanValues);
 
     // Simple trend calculation
     const firstHalf = values.slice(0, Math.floor(values.length / 2));
     const secondHalf = values.slice(Math.floor(values.length / 2));
-    const firstAvg = firstHalf.reduce((sum, val) => sum + val, 0) / firstHalf.length;
-    const secondAvg = secondHalf.reduce((sum, val) => sum + val, 0) / secondHalf.length;
+    const cleanFirst = firstHalf.filter((v): v is number => v !== null);
+    const firstAvg = cleanFirst.reduce((sum, val) => sum + val, 0) / cleanFirst.length;
+    const cleanSecond = secondHalf.filter((v): v is number => v !== null);
+    const secondAvg = cleanSecond.reduce((sum, val) => sum + val, 0) / cleanSecond.length;
+
 
     let trend = 'stable';
     const changePercent = ((secondAvg - firstAvg) / firstAvg) * 100;

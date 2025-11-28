@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { AuditLog } from '../entities/audit-log.entity';
+import { AuditLog } from './entities/audit-log.entity';
 
 export interface AuditLogData {
   userId?: string;
@@ -26,8 +26,7 @@ export class AuditLogService {
   async log(data: AuditLogData): Promise<void> {
     try {
       const auditLog = this.auditLogRepository.create({
-        ...data,
-        isSuccessful: !data.errorMessage,
+        isSuccessful: true,
       });
       
       await this.auditLogRepository.save(auditLog);

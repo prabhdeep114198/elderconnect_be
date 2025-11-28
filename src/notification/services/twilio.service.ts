@@ -26,7 +26,7 @@ export class TwilioService {
   constructor(private readonly configService: ConfigService) {
     const accountSid = this.configService.get<string>('twilio.accountSid');
     const authToken = this.configService.get<string>('twilio.authToken');
-    this.fromNumber = this.configService.get<string>('twilio.fromNumber');
+   this.fromNumber = this.configService.getOrThrow<string>('twilio.fromNumber');
 
     if (!accountSid || !authToken) {
       this.logger.warn('Twilio credentials not configured. SMS and voice services will be disabled.');

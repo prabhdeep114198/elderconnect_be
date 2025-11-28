@@ -6,7 +6,7 @@ import { UserProfile } from './entities/user-profile.entity';
 import { Medication } from './entities/medication.entity';
 import { MedicationLog } from './entities/medication-log.entity';
 import { AuditLogService } from '../common/services/audit-log.service';
-import { AuditLog } from '../common/entities/audit-log.entity';
+import { AuditLog } from '../common/services/entities/audit-log.entity';
 
 @Module({
   imports: [

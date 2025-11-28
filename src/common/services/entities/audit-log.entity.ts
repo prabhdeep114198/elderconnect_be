@@ -1,5 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, Index } from 'typeorm';
-import { AuditAction } from '../enums/user-role.enum';
+import { AuditAction } from '../../enums/user-role.enum';
 
 @Entity('audit_logs')
 @Index(['userId', 'timestamp'])

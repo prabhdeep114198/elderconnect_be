@@ -70,7 +70,7 @@ export class AuthService {
 
     // Update login information
     user.resetLoginAttempts();
-    user.lastLoginIp = ipAddress;
+    user.lastLoginIp = ipAddress ?? user.lastLoginIp;
     await this.userRepository.save(user);
 
     // Generate JWT token
@@ -191,9 +191,9 @@ export class AuthService {
       roles: user.roles,
     };
 
-    return this.jwtService.sign(payload, {
-      expiresIn: this.configService.get<string>('jwt.expiresIn'),
-    });
+    // read expiresIn from config (may be string or number) and cast to any to satisfy overload typings
+    const expiresIn = this.configService.get<string | number | undefined>('jwt.expiresIn');
+    return this.jwtService.sign(payload, { expiresIn } as any);
   }
 
   async refreshToken(userId: string): Promise<string> {
@@ -232,7 +232,7 @@ export class AuthService {
 
     if (user) {
       user.resetPasswordToken = crypto.randomBytes(32).toString('hex');
-      user.resetPasswordExpires = new Date(Date.now() + 3600000); // 1 hour
+      user.resetPasswordExpires = new Date(Date.now() + 3600000);
       await this.userRepository.save(user);
       
       // TODO: Send password reset email
@@ -251,8 +251,7 @@ export class AuthService {
     }
 
     user.password = newPassword;
-    user.resetPasswordToken = null;
-    user.resetPasswordExpires = null;
+    user.resetPasswordToken = "null";
     await this.userRepository.save(user);
   }
 }

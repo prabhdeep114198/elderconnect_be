@@ -9,7 +9,7 @@ import { TwilioService } from './services/twilio.service';
 import { FCMService } from './services/fcm.service';
 import { KafkaService } from '../device/services/kafka.service';
 import { AuditLogService } from '../common/services/audit-log.service';
-import { AuditLog } from '../common/entities/audit-log.entity';
+import { AuditLog } from '../common/services/entities/audit-log.entity';
 
 @Module({
   imports: [

@@ -169,7 +169,8 @@ export class FCMService {
         },
       };
 
-      const response = await admin.messaging().sendMulticast(message);
+      const response = await admin.messaging().sendEachForMulticast(message);
+
 
       this.logger.log(`Multicast notification sent - Success: ${response.successCount}, Failure: ${response.failureCount}`);
 

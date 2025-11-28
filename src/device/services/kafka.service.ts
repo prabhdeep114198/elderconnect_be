@@ -41,9 +41,14 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
   };
 
   constructor(private readonly configService: ConfigService) {
+    const brokers = this.configService.get<string[]>('kafka.brokers');
+    if (!brokers || brokers.length === 0) {
+      throw new Error('Kafka brokers are not configured (kafka.brokers)');
+    }
+
     this.kafka = new Kafka({
       clientId: this.configService.get<string>('kafka.clientId'),
-      brokers: this.configService.get<string[]>('kafka.brokers'),
+      brokers,
       retry: {
         initialRetryTime: 100,
         retries: 8,
@@ -56,8 +61,13 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
       transactionTimeout: 30000,
     });
 
+    const groupId = this.configService.get<string>('kafka.groupId');
+    if (!groupId) {
+      throw new Error('Kafka groupId is not configured (kafka.groupId)');
+    }
+
     this.consumer = this.kafka.consumer({
-      groupId: this.configService.get<string>('kafka.groupId'),
+      groupId,
       sessionTimeout: 30000,
       heartbeatInterval: 3000,
     });
