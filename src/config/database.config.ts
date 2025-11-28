@@ -5,7 +5,7 @@ export const databaseConfig = registerAs('database', () => ({
   auth: {
     type: 'postgres',
     host: process.env.DB_HOST || 'localhost',
-    port: parseInt(process.env.DB_PORT, 10) || 5432,
+    port: 5432,
     username: process.env.DB_USERNAME || 'postgres',
     password: process.env.DB_PASSWORD || 'postgres',
     database: process.env.AUTH_DB_NAME || 'elder_auth_db',
@@ -18,7 +18,7 @@ export const databaseConfig = registerAs('database', () => ({
   profile: {
     type: 'postgres',
     host: process.env.DB_HOST || 'localhost',
-    port: parseInt(process.env.DB_PORT, 10) || 5433,
+    port: 5433,
     username: process.env.DB_USERNAME || 'postgres',
     password: process.env.DB_PASSWORD || 'postgres',
     database: process.env.PROFILE_DB_NAME || 'elder_profile_db',
@@ -31,7 +31,7 @@ export const databaseConfig = registerAs('database', () => ({
   vitals: {
     type: 'postgres',
     host: process.env.DB_HOST || 'localhost',
-    port: parseInt(process.env.DB_PORT, 10) || 5434,
+    port: 5434,
     username: process.env.DB_USERNAME || 'postgres',
     password: process.env.DB_PASSWORD || 'postgres',
     database: process.env.VITALS_DB_NAME || 'elder_vitals_db',
@@ -44,7 +44,7 @@ export const databaseConfig = registerAs('database', () => ({
   media: {
     type: 'postgres',
     host: process.env.DB_HOST || 'localhost',
-    port: parseInt(process.env.DB_PORT, 10) || 5435,
+    port: 5435,
     username: process.env.DB_USERNAME || 'postgres',
     password: process.env.DB_PASSWORD || 'postgres',
     database: process.env.MEDIA_DB_NAME || 'elder_media_db',
@@ -57,7 +57,7 @@ export const databaseConfig = registerAs('database', () => ({
   audit: {
     type: 'postgres',
     host: process.env.DB_HOST || 'localhost',
-    port: parseInt(process.env.DB_PORT, 10) || 5436,
+    port: 5436,
     username: process.env.DB_USERNAME || 'postgres',
     password: process.env.DB_PASSWORD || 'postgres',
     database: process.env.AUDIT_DB_NAME || 'elder_audit_db',
@@ -70,7 +70,7 @@ export const databaseConfig = registerAs('database', () => ({
 
 export const redisConfig = registerAs('redis', () => ({
   host: process.env.REDIS_HOST || 'localhost',
-  port: parseInt(process.env.REDIS_PORT, 10) || 6379,
+  port: 6379,
   password: process.env.REDIS_PASSWORD || undefined,
   db: 0,
 }));

@@ -14,7 +14,8 @@ import {
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
-import { NotificationService, CreateNotificationDto } from './notification.service';
+import { NotificationService } from './notification.service';
+import type { CreateNotificationDto } from './notification.service';
 import { NotificationStatus, NotificationCategory } from './entities/notification.entity';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -110,7 +111,7 @@ export class NotificationController {
     @Query('limit') limit?: number,
     @Query('offset') offset?: number,
     @Query('includeRead') includeRead?: boolean,
-    @CurrentUser() currentUser,
+    @CurrentUser() currentUser?: any,
   ) {
     const result = await this.notificationService.getNotifications(currentUser.id, {
       status,
@@ -250,7 +251,7 @@ export class NotificationController {
   @ApiResponse({ status: 200, description: 'Templates retrieved successfully' })
   async getTemplates(
     @Query('category') category?: NotificationCategory,
-    @CurrentUser() currentUser,
+    @CurrentUser() currentUser?: any,
   ) {
     const templates = await this.notificationService.getTemplates(category);
 
@@ -286,7 +287,7 @@ export class NotificationController {
   async getNotificationStats(
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
-    @CurrentUser() currentUser,
+    @CurrentUser() currentUser?: any,
   ) {
     const stats = await this.notificationService.getNotificationStats(
       currentUser.id,
@@ -311,7 +312,7 @@ export class NotificationController {
     @Query('category') category?: NotificationCategory,
     @Query('limit') limit?: number,
     @Query('offset') offset?: number,
-    @CurrentUser() currentUser,
+    @CurrentUser() currentUser?: any,
   ) {
     const result = await this.notificationService.getNotifications(userId, {
       status,
@@ -333,7 +334,7 @@ export class NotificationController {
   async getGlobalStats(
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
-    @CurrentUser() currentUser,
+    @CurrentUser() currentUser?: any,
   ) {
     const stats = await this.notificationService.getNotificationStats(
       undefined, // No specific user - global stats

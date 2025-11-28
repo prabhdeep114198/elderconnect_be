@@ -26,15 +26,33 @@ export class S3Service {
   private readonly publicBaseUrl: string;
 
   constructor(private readonly configService: ConfigService) {
-    this.bucketName = this.configService.get<string>('aws.s3.bucketName');
-    this.region = this.configService.get<string>('aws.region');
+    const bucketName = this.configService.get<string>('aws.s3.bucketName');
+    const region = this.configService.get<string>('aws.region');
+    const accessKeyId = this.configService.get<string>('aws.accessKeyId');
+    const secretAccessKey = this.configService.get<string>('aws.secretAccessKey');
+
+    if (!bucketName) {
+      throw new Error('Missing required configuration: aws.s3.bucketName');
+    }
+    if (!region) {
+      throw new Error('Missing required configuration: aws.region');
+    }
+    if (!accessKeyId) {
+      throw new Error('Missing required configuration: aws.accessKeyId');
+    }
+    if (!secretAccessKey) {
+      throw new Error('Missing required configuration: aws.secretAccessKey');
+    }
+
+    this.bucketName = bucketName;
+    this.region = region;
     this.publicBaseUrl = `https://${this.bucketName}.s3.${this.region}.amazonaws.com`;
 
     this.s3Client = new S3Client({
       region: this.region,
       credentials: {
-        accessKeyId: this.configService.get<string>('aws.accessKeyId'),
-        secretAccessKey: this.configService.get<string>('aws.secretAccessKey'),
+        accessKeyId,
+        secretAccessKey,
       },
     });
   }
@@ -279,7 +297,7 @@ export class S3Service {
 
   generateThumbnailKey(originalKey: string): string {
     const pathParts = originalKey.split('/');
-    const fileName = pathParts.pop();
+    const fileName = pathParts.pop() ?? '';
     const directory = pathParts.join('/');
     
     return `${directory}/thumbnails/thumb_${fileName}`;
@@ -287,7 +305,7 @@ export class S3Service {
 
   generateProcessedKey(originalKey: string, suffix: string): string {
     const pathParts = originalKey.split('/');
-    const fileName = pathParts.pop();
+    const fileName = pathParts.pop() ?? '';
     const directory = pathParts.join('/');
     const extension = path.extname(fileName);
     const baseName = path.basename(fileName, extension);
