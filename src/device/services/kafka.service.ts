@@ -41,13 +41,20 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
   };
 
   constructor(private readonly configService: ConfigService) {
-    const brokers = this.configService.get<string[]>('kafka.brokers');
-    if (!brokers || brokers.length === 0) {
-      throw new Error('Kafka brokers are not configured (kafka.brokers)');
-    }
+    // -----------------------------
+    // Brokers setup
+    // -----------------------------
+    // This line throws error if brokers are not configured
+    // const brokers = this.configService.get<string>('KAFKA_BROKERS')?.split(','); 
+    // if (!brokers || brokers.length === 0) {
+    //   throw new Error('Kafka brokers are not configured (kafka.brokers)');
+    // }
+
+    // Safe default if env variable is missing
+    const brokers = this.configService.get<string>('KAFKA_BROKERS')?.split(',') || ['localhost:9092'];
 
     this.kafka = new Kafka({
-      clientId: this.configService.get<string>('kafka.clientId'),
+      clientId: this.configService.get<string>('kafka.clientId') || 'elder-connect-client', // default clientId
       brokers,
       retry: {
         initialRetryTime: 100,
@@ -55,17 +62,30 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
       },
     });
 
+    // -----------------------------
+    // Producer setup
+    // -----------------------------
     this.producer = this.kafka.producer({
       maxInFlightRequests: 1,
       idempotent: true,
       transactionTimeout: 30000,
     });
 
-    const groupId = this.configService.get<string>('kafka.groupId');
-    if (!groupId) {
-      throw new Error('Kafka groupId is not configured (kafka.groupId)');
-    }
+    // -----------------------------
+    // GroupId setup for consumer
+    // -----------------------------
+    // This line throws error if groupId is not configured
+    // const groupId = this.configService.get<string>('kafka.groupId');
+    // if (!groupId) {
+    //   throw new Error('Kafka groupId is not configured (kafka.groupId)');
+    // }
 
+    // Safe default if env variable is missing
+    const groupId = this.configService.get<string>('kafka.groupId') || 'default-group';
+
+    // -----------------------------
+    // Consumer setup
+    // -----------------------------
     this.consumer = this.kafka.consumer({
       groupId,
       sessionTimeout: 30000,
@@ -73,15 +93,18 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
+  private isConnected = false;
+
   async onModuleInit() {
     try {
+      this.logger.log('Connecting to Kafka...');
       await this.producer.connect();
       await this.consumer.connect();
-      
-      // Subscribe to topics for processing
-      await this.consumer.subscribe({ 
+
+      // Subscribe to all topics
+      await this.consumer.subscribe({
         topics: Object.values(this.topics),
-        fromBeginning: false 
+        fromBeginning: false
       });
 
       // Start consuming messages
@@ -89,14 +112,17 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
         eachMessage: this.handleMessage.bind(this),
       });
 
+      this.isConnected = true;
       this.logger.log('Kafka service initialized successfully');
     } catch (error) {
-      this.logger.error('Failed to initialize Kafka service', error);
-      throw error;
+      this.logger.warn('Failed to initialize Kafka service - Kafka features will be disabled. Error: ' + error.message);
+      // We do NOT throw here, allowing the app to start without Kafka
+      this.isConnected = false;
     }
   }
 
   async onModuleDestroy() {
+    if (!this.isConnected) return;
     try {
       await this.producer.disconnect();
       await this.consumer.disconnect();
@@ -106,8 +132,11 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  // -----------------------------
   // Producer methods
+  // -----------------------------
   async publishTelemetry(message: TelemetryMessage): Promise<void> {
+    if (!this.isConnected) return;
     try {
       await this.producer.send({
         topic: this.topics.telemetry,
@@ -131,6 +160,7 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
   }
 
   async publishAlert(message: AlertMessage): Promise<void> {
+    if (!this.isConnected) return;
     try {
       await this.producer.send({
         topic: this.topics.alerts,
@@ -154,6 +184,7 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
   }
 
   async publishVitals(userId: string, vitalsData: Record<string, any>): Promise<void> {
+    if (!this.isConnected) return;
     try {
       const message = {
         userId,
@@ -181,6 +212,7 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
   }
 
   async publishNotification(userId: string, notification: Record<string, any>): Promise<void> {
+    if (!this.isConnected) return;
     try {
       const message = {
         userId,
@@ -208,7 +240,9 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  // -----------------------------
   // Consumer message handler
+  // -----------------------------
   private async handleMessage({ topic, partition, message }: EachMessagePayload): Promise<void> {
     try {
       const value = message.value?.toString();
@@ -241,10 +275,7 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async processTelemetryMessage(data: any, headers: any): Promise<void> {
-    // Process telemetry data - could trigger anomaly detection, alerts, etc.
     this.logger.debug(`Processing telemetry: ${data.metricType} for user ${data.userId}`);
-    
-    // Example: Check for anomalies
     if (this.isAnomalousReading(data)) {
       await this.publishAlert({
         alertId: `anomaly-${Date.now()}`,
@@ -260,10 +291,7 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async processAlertMessage(data: any, headers: any): Promise<void> {
-    // Process alerts - could trigger notifications, emergency protocols, etc.
     this.logger.log(`Processing alert: ${data.type} for user ${data.userId}`);
-    
-    // Example: Trigger notifications for high priority alerts
     if (data.priority === 'critical' || data.priority === 'high') {
       await this.publishNotification(data.userId, {
         type: 'alert',
@@ -276,42 +304,35 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async processVitalsMessage(data: any, headers: any): Promise<void> {
-    // Process vitals data - could update health trends, trigger alerts, etc.
     this.logger.debug(`Processing vitals for user ${data.userId}`);
   }
 
   private async processNotificationMessage(data: any, headers: any): Promise<void> {
-    // Process notifications - could send to external services, update delivery status, etc.
     this.logger.debug(`Processing notification for user ${data.userId}`);
   }
 
   private isAnomalousReading(data: TelemetryMessage): boolean {
-    // Simple anomaly detection logic - in production, this would be more sophisticated
     switch (data.metricType) {
       case 'heart_rate':
         const bpm = data.value.bpm;
         return bpm < 40 || bpm > 150;
-      
       case 'blood_pressure':
         const systolic = data.value.systolic;
         const diastolic = data.value.diastolic;
         return systolic > 180 || systolic < 70 || diastolic > 110 || diastolic < 40;
-      
       case 'temperature':
         const temp = data.value.celsius || data.value.fahrenheit;
-        if (data.value.celsius) {
-          return temp < 35 || temp > 39;
-        } else if (data.value.fahrenheit) {
-          return temp < 95 || temp > 102;
-        }
+        if (data.value.celsius) return temp < 35 || temp > 39;
+        else if (data.value.fahrenheit) return temp < 95 || temp > 102;
         return false;
-      
       default:
         return false;
     }
   }
 
+  // -----------------------------
   // Utility methods
+  // -----------------------------
   async getTopicMetadata(topic: string): Promise<any> {
     try {
       const admin = this.kafka.admin();
@@ -329,7 +350,7 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
     try {
       const admin = this.kafka.admin();
       await admin.connect();
-      
+
       await admin.createTopics({
         topics: topics.map(topic => ({
           topic,
@@ -337,7 +358,7 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
           replicationFactor: 1,
         })),
       });
-      
+
       await admin.disconnect();
       this.logger.log(`Created topics: ${topics.join(', ')}`);
     } catch (error) {

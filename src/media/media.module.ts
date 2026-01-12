@@ -20,6 +20,6 @@ import { AuditLog } from '../common/services/entities/audit-log.entity';
   ],
   controllers: [MediaController],
   providers: [MediaService, S3Service, AuditLogService],
-  exports: [MediaService, S3Service],
+  exports: [MediaService /* , S3Service */],
 })
-export class MediaModule {}
+export class MediaModule { }

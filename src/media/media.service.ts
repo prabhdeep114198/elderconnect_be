@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   UnauthorizedException,
+  Optional,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, FindManyOptions, In } from 'typeorm';
@@ -17,14 +18,21 @@ export class MediaService {
   constructor(
     @InjectRepository(MediaFile, 'media')
     private readonly mediaRepository: Repository<MediaFile>,
-    private readonly s3Service: S3Service,
-  ) {}
+    @Optional() private readonly s3Service: S3Service,
+  ) { }
+
+  private checkS3Configured(): void {
+    if (!this.s3Service) {
+      throw new BadRequestException('S3 storage is not configured. File operations are currently disabled.');
+    }
+  }
 
   // File Upload Management
   async generatePresignedUploadUrl(
     userId: string,
     presignedUrlDto: PresignedUrlDto,
   ): Promise<any> {
+    this.checkS3Configured();
     // Validate file type and size
     this.validateFileUpload(presignedUrlDto.mimeType, presignedUrlDto.fileSize);
 
@@ -73,6 +81,7 @@ export class MediaService {
       throw new NotFoundException('Media file not found');
     }
 
+    this.checkS3Configured();
     // Verify file exists in S3
     const fileExists = await this.s3Service.fileExists(mediaFile.filePath);
     if (!fileExists) {
@@ -95,6 +104,7 @@ export class MediaService {
     file: Express.Multer.File,
     uploadMediaDto: UploadMediaDto,
   ): Promise<MediaFile> {
+    this.checkS3Configured();
     // Validate file
     this.validateFileUpload(file.mimetype, file.size);
 
@@ -222,6 +232,7 @@ export class MediaService {
   async deleteMediaFile(userId: string, fileId: string): Promise<void> {
     const mediaFile = await this.getMediaFile(userId, fileId);
 
+    this.checkS3Configured();
     // Delete from S3
     await this.s3Service.deleteFile(mediaFile.filePath);
 
@@ -248,6 +259,7 @@ export class MediaService {
   ): Promise<{ downloadUrl: string; expiresIn: number }> {
     const mediaFile = await this.getMediaFile(userId, fileId);
 
+    this.checkS3Configured();
     const result = await this.s3Service.generatePresignedDownloadUrl(
       mediaFile.filePath,
       expiresIn,
@@ -258,6 +270,7 @@ export class MediaService {
 
   async downloadFile(userId: string, fileId: string): Promise<{ buffer: Buffer; mediaFile: MediaFile }> {
     const mediaFile = await this.getMediaFile(userId, fileId);
+    this.checkS3Configured();
     const buffer = await this.s3Service.downloadFile(mediaFile.filePath);
 
     return { buffer, mediaFile };
@@ -271,10 +284,11 @@ export class MediaService {
       throw new BadRequestException('Thumbnails can only be generated for images and videos');
     }
 
+    this.checkS3Configured();
     // In a real implementation, you would use a service like Sharp for images
     // or FFmpeg for videos to generate thumbnails
     const thumbnailKey = this.s3Service.generateThumbnailKey(mediaFile.filePath);
-    
+
     // For now, we'll just mark that a thumbnail should be generated
     mediaFile.thumbnailPath = thumbnailKey;
     mediaFile.processingStatus = {
@@ -326,6 +340,7 @@ export class MediaService {
 
     for (const file of actuallyExpired) {
       try {
+        this.checkS3Configured();
         await this.s3Service.deleteFile(file.filePath);
         if (file.thumbnailPath) {
           await this.s3Service.deleteFile(file.thumbnailPath);

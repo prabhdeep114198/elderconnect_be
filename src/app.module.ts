@@ -7,7 +7,15 @@ import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerGuard } from '@nestjs/throttler';
 
 // Configuration
-import { appConfig } from './config/app.config';
+import {
+  appConfig,
+  jwtConfig,
+  awsConfig,
+  twilioConfig,
+  firebaseConfig,
+  throttleConfig,
+  fileUploadConfig
+} from './config/app.config';
 import { databaseConfig } from './config/database.config';
 
 // Modules
@@ -40,7 +48,16 @@ import { AuditLog } from './common/services/entities/audit-log.entity';
     // Configuration
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [appConfig, databaseConfig],
+      load: [
+        appConfig,
+        databaseConfig,
+        jwtConfig,
+        awsConfig,
+        twilioConfig,
+        firebaseConfig,
+        throttleConfig,
+        fileUploadConfig
+      ],
       envFilePath: ['.env.local', '.env'],
     }),
 
@@ -178,4 +195,4 @@ import { AuditLog } from './common/services/entities/audit-log.entity';
     { provide: APP_INTERCEPTOR, useClass: AuditLogInterceptor },
   ],
 })
-export class AppModule {}
+export class AppModule { }

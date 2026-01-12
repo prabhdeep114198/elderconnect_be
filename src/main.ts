@@ -3,13 +3,13 @@ import { ValidationPipe, Logger } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
-import * as compression from 'compression';
+import compression from 'compression';
 import helmet from 'helmet';
-import * as cookieParser from 'cookie-parser';
+import cookieParser from 'cookie-parser';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
-  
+
   const app = await NestFactory.create(AppModule, {
     logger: ['error', 'warn', 'log', 'debug', 'verbose'],
   });
@@ -31,7 +31,7 @@ async function bootstrap() {
 
   // CORS configuration
   app.enableCors({
-    origin: environment === 'production' 
+    origin: environment === 'production'
       ? configService.get<string[]>('app.allowedOrigins', [])
       : true,
     credentials: true,
@@ -118,7 +118,7 @@ async function bootstrap() {
 
   // Start the application
   await app.listen(port, '0.0.0.0');
-  
+
   logger.log(`🚀 Elder Connect API is running on: http://localhost:${port}/api`);
   logger.log(`📚 API Documentation: http://localhost:${port}/api/docs`);
   logger.log(`🏥 Health Check: http://localhost:${port}/health`);
