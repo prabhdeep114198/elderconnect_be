@@ -25,7 +25,7 @@ export class AuthService {
     private readonly deviceRepository: Repository<Device>,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
-  ) {}
+  ) { }
 
   async register(registerDto: RegisterDto): Promise<{ user: Partial<User>; token: string }> {
     // Check if user already exists
@@ -119,6 +119,30 @@ export class AuthService {
     });
   }
 
+  async validateUserByEmail(email: string): Promise<User | null> {
+    return this.userRepository.findOne({
+      where: { email },
+    });
+  }
+
+  async registerFromFirebase(firebaseUser: any): Promise<User> {
+    const [firstName, ...lastNameParts] = (firebaseUser.name || 'User').split(' ');
+    const lastName = lastNameParts.join(' ') || 'Firebase';
+
+    const user = this.userRepository.create({
+      id: firebaseUser.uid, // Using Firebase UID as local ID
+      email: firebaseUser.email,
+      firstName,
+      lastName,
+      isActive: true,
+      isEmailVerified: firebaseUser.email_verified || false,
+      roles: [UserRole.ELDER],
+      password: crypto.randomBytes(16).toString('hex'), // Random password for local DB compatibility
+    });
+
+    return this.userRepository.save(user);
+  }
+
   async registerDevice(userId: string, deviceDto: DeviceRegisterDto): Promise<Device> {
     // Check if device already exists
     const existingDevice = await this.deviceRepository.findOne({
@@ -198,7 +222,7 @@ export class AuthService {
 
   async refreshToken(userId: string): Promise<string> {
     const user = await this.validateUserById(userId);
-    
+
     if (!user) {
       throw new UnauthorizedException('User not found');
     }
@@ -216,7 +240,7 @@ export class AuthService {
     }
 
     const isOldPasswordValid = await user.validatePassword(oldPassword);
-    
+
     if (!isOldPasswordValid) {
       throw new BadRequestException('Current password is incorrect');
     }
@@ -234,7 +258,7 @@ export class AuthService {
       user.resetPasswordToken = crypto.randomBytes(32).toString('hex');
       user.resetPasswordExpires = new Date(Date.now() + 3600000);
       await this.userRepository.save(user);
-      
+
       // TODO: Send password reset email
     }
   }

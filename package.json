@@ -49,6 +49,7 @@
     "kafkajs": "^2.2.4",
     "multer": "^2.0.2",
     "passport": "^0.7.0",
+    "passport-firebase-jwt": "^1.2.1",
     "passport-jwt": "^4.0.1",
     "passport-local": "^1.0.0",
     "pg": "^8.16.3",

@@ -9,13 +9,13 @@ import { User } from './entities/user.entity';
 import { Device } from './entities/device.entity';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { LocalStrategy } from './strategies/local.strategy';
-import { AuditLogService } from '../common/services/audit-log.service';
-import { AuditLog } from '../common/services/entities/audit-log.entity';
+import { FirebaseStrategy } from './strategies/firebase.strategy';
+import { AuditLogModule } from '../common/services/audit-log.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([User, Device], 'auth'),
-    TypeOrmModule.forFeature([AuditLog], 'audit'),
+    AuditLogModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -29,7 +29,7 @@ import { AuditLog } from '../common/services/entities/audit-log.entity';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, LocalStrategy, AuditLogService],
-  exports: [AuthService, JwtStrategy, PassportModule],
+  providers: [AuthService, JwtStrategy, LocalStrategy, FirebaseStrategy],
+  exports: [AuthService, JwtStrategy, FirebaseStrategy, PassportModule],
 })
-export class AuthModule {}
+export class AuthModule { }

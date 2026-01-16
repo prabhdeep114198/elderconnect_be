@@ -24,7 +24,8 @@ import { ProfileModule } from './profile/profile.module';
 import { DeviceModule } from './device/device.module';
 import { MediaModule } from './media/media.module';
 import { NotificationModule } from './notification/notification.module';
-import { AuditLogModule } from './common/services/audit-log.module'; // <-- Added
+import { AuditLogModule } from './common/services/audit-log.module';
+import { ChatModule } from './chat/chat.module';
 
 // Common interceptors
 import { AuditLogInterceptor } from './common/interceptors/audit-log.interceptor';
@@ -189,6 +190,7 @@ import { AuditLog } from './common/services/entities/audit-log.entity';
     MediaModule,
     NotificationModule,
     AuditLogModule,
+    ChatModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

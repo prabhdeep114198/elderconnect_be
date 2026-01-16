@@ -8,13 +8,12 @@ import { NotificationTemplate } from './entities/notification-template.entity';
 import { TwilioService } from './services/twilio.service';
 import { FCMService } from './services/fcm.service';
 import { KafkaService } from '../device/services/kafka.service';
-import { AuditLogService } from '../common/services/audit-log.service';
-import { AuditLog } from '../common/services/entities/audit-log.entity';
+import { AuditLogModule } from '../common/services/audit-log.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Notification, NotificationTemplate], 'audit'),
-    TypeOrmModule.forFeature([AuditLog], 'audit'),
+    AuditLogModule,
     ScheduleModule.forRoot(),
   ],
   controllers: [NotificationController],
@@ -23,8 +22,7 @@ import { AuditLog } from '../common/services/entities/audit-log.entity';
     TwilioService,
     FCMService,
     KafkaService,
-    AuditLogService,
   ],
   exports: [NotificationService, TwilioService, FCMService],
 })
-export class NotificationModule {}
+export class NotificationModule { }
