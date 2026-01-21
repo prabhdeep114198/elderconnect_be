@@ -14,7 +14,8 @@ import {
   twilioConfig,
   firebaseConfig,
   throttleConfig,
-  fileUploadConfig
+  fileUploadConfig,
+  n8nConfig
 } from './config/app.config';
 import { databaseConfig } from './config/database.config';
 
@@ -57,7 +58,8 @@ import { AuditLog } from './common/services/entities/audit-log.entity';
         twilioConfig,
         firebaseConfig,
         throttleConfig,
-        fileUploadConfig
+        fileUploadConfig,
+        n8nConfig
       ],
       envFilePath: ['.env.local', '.env'],
     }),

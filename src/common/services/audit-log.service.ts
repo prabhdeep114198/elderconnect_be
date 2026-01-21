@@ -2,10 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AuditLog } from './entities/audit-log.entity';
+import { AuditAction } from '../enums/user-role.enum';
 
 export interface AuditLogData {
   userId?: string;
-  action: string;
+  action: AuditAction;
   resource: string;
   details?: Record<string, any>;
   ipAddress?: string;
@@ -21,14 +22,15 @@ export class AuditLogService {
   constructor(
     @InjectRepository(AuditLog, 'audit')
     private readonly auditLogRepository: Repository<AuditLog>,
-  ) {}
+  ) { }
 
   async log(data: AuditLogData): Promise<void> {
     try {
       const auditLog = this.auditLogRepository.create({
-        isSuccessful: true,
+        ...data,
+        isSuccessful: data.isSuccessful !== undefined ? data.isSuccessful : true,
       });
-      
+
       await this.auditLogRepository.save(auditLog);
     } catch (error) {
       // Log to console if database logging fails

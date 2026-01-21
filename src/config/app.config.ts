@@ -41,3 +41,9 @@ export const fileUploadConfig = registerAs('fileUpload', () => ({
   maxFileSize: 10485760, // 10MB
   allowedFileTypes: (process.env.ALLOWED_FILE_TYPES || 'image/jpeg,image/png,image/gif,video/mp4,audio/mpeg').split(','),
 }));
+
+export const n8nConfig = registerAs('n8n', () => ({
+  webhookUrl: process.env.N8N_WEBHOOK_URL,
+  apiKey: process.env.N8N_API_KEY,
+}));
+
