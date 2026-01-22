@@ -91,7 +91,7 @@ export class DeviceController {
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
     @Query('limit') limit: number = 100,
-    @CurrentUser() currentUser,
+    @CurrentUser() currentUser?: any,
   ) {
     // Authorization check
     if (userId !== currentUser.id && !currentUser.roles.includes(UserRole.CAREGIVER) && !currentUser.roles.includes(UserRole.ADMIN)) {
@@ -170,7 +170,7 @@ export class DeviceController {
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
     @Query('limit') limit: number = 100,
-    @CurrentUser() currentUser,
+    @CurrentUser() currentUser?: any,
   ) {
     if (userId !== currentUser.id && !currentUser.roles.includes(UserRole.CAREGIVER) && !currentUser.roles.includes(UserRole.ADMIN)) {
       throw new Error('Unauthorized to view vitals for this user');
@@ -218,7 +218,7 @@ export class DeviceController {
     @Param('userId') userId: string,
     @Param('vitalType') vitalType: string,
     @Query('days') days: number = 30,
-    @CurrentUser() currentUser,
+    @CurrentUser() currentUser?: any,
   ) {
     if (userId !== currentUser.id && !currentUser.roles.includes(UserRole.CAREGIVER) && !currentUser.roles.includes(UserRole.ADMIN)) {
       throw new Error('Unauthorized to view vitals trends for this user');
@@ -285,7 +285,7 @@ export class DeviceController {
     @Param('userId') userId: string,
     @Query('status') status?: SOSStatus,
     @Query('limit') limit: number = 50,
-    @CurrentUser() currentUser,
+    @CurrentUser() currentUser?: any,
   ) {
     if (userId !== currentUser.id && !currentUser.roles.includes(UserRole.CAREGIVER) && !currentUser.roles.includes(UserRole.ADMIN)) {
       throw new Error('Unauthorized to view SOS alerts for this user');

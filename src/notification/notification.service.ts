@@ -50,7 +50,7 @@ export class NotificationService {
     private readonly twilioService: TwilioService,
     private readonly fcmService: FCMService,
     private readonly kafkaService: KafkaService,
-  ) {}
+  ) { }
 
   // Core Notification Methods
   async createNotification(createDto: CreateNotificationDto): Promise<Notification> {
@@ -164,7 +164,7 @@ export class NotificationService {
 
       if (result.success) {
         notification.markAsSent(result.messageId || result.callId);
-        
+
         // For some types, we can immediately mark as delivered
         if (notification.type === NotificationType.IN_APP) {
           notification.markAsDelivered();
@@ -188,11 +188,22 @@ export class NotificationService {
       throw new BadRequestException('SMS recipient phone number is required');
     }
 
+    // N8N Integration Placeholder
+    // return this.httpService.post(process.env.N8N_WEBHOOK_URL, {
+    //   type: 'SMS',
+    //   recipient: notification.recipient,
+    //   message: notification.message
+    // }).toPromise();
+
+    // Twilio temporarily disabled for N8N integration
+    /*
     return this.twilioService.sendSMS(
       notification.recipient,
       notification.message,
       notification.priority,
     );
+    */
+    return { success: true, message: 'Simulated N8N/Twilio handoff' };
   }
 
   private async sendPushNotification(notification: Notification): Promise<any> {
@@ -218,11 +229,15 @@ export class NotificationService {
       throw new BadRequestException('Voice call recipient phone number is required');
     }
 
+    // Twilio temporarily disabled for N8N integration
+    /*
     return this.twilioService.makeVoiceCall(
       notification.recipient,
       notification.message,
       notification.priority,
     );
+    */
+    return { success: true, message: 'Simulated N8N/Twilio handoff' };
   }
 
   private async sendEmailNotification(notification: Notification): Promise<any> {
@@ -334,7 +349,7 @@ export class NotificationService {
           type: NotificationType.SMS,
           category: NotificationCategory.SOS_ALERT,
           title: `🚨 EMERGENCY ALERT`,
-          message: location 
+          message: location
             ? `${message} Location: https://maps.google.com/?q=${location.latitude},${location.longitude}`
             : message,
           recipient: contact.phone,

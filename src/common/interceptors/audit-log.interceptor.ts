@@ -11,15 +11,15 @@ import { AuditAction } from '../enums/user-role.enum';
 
 @Injectable()
 export class AuditLogInterceptor implements NestInterceptor {
-  constructor(private readonly auditLogService: AuditLogService) {}
+  constructor(private readonly auditLogService: AuditLogService) { }
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const request = context.switchToHttp().getRequest();
     const { method, url, user, body, params, query } = request;
-    
+
     const action = this.getActionFromMethod(method);
     const resource = this.getResourceFromUrl(url);
-    
+
     return next.handle().pipe(
       tap({
         next: (response) => {
@@ -27,6 +27,7 @@ export class AuditLogInterceptor implements NestInterceptor {
             userId: user?.id,
             action,
             resource,
+            isSuccessful: true,
             details: {
               method,
               url,
@@ -45,6 +46,8 @@ export class AuditLogInterceptor implements NestInterceptor {
             userId: user?.id,
             action,
             resource,
+            isSuccessful: false,
+            errorMessage: error.message,
             details: {
               method,
               url,
@@ -61,6 +64,7 @@ export class AuditLogInterceptor implements NestInterceptor {
         },
       }),
     );
+
   }
 
   private getActionFromMethod(method: string): AuditAction {
@@ -86,16 +90,16 @@ export class AuditLogInterceptor implements NestInterceptor {
 
   private sanitizeBody(body: any): any {
     if (!body) return body;
-    
+
     const sanitized = { ...body };
     const sensitiveFields = ['password', 'token', 'secret', 'key'];
-    
+
     sensitiveFields.forEach(field => {
       if (sanitized[field]) {
         sanitized[field] = '[REDACTED]';
       }
     });
-    
+
     return sanitized;
   }
 }

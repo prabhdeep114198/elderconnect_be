@@ -24,19 +24,40 @@ export class S3Service {
   private readonly bucketName: string;
   private readonly region: string;
   private readonly publicBaseUrl: string;
+  private readonly isConfigured: boolean = false;
 
   constructor(private readonly configService: ConfigService) {
-    this.bucketName = this.configService.get<string>('aws.s3.bucketName');
-    this.region = this.configService.get<string>('aws.region');
+    const bucketName = this.configService.get<string>('aws.s3.bucketName');
+    const region = this.configService.get<string>('aws.region');
+    const accessKeyId = this.configService.get<string>('aws.accessKeyId');
+    const secretAccessKey = this.configService.get<string>('aws.secretAccessKey');
+
+    if (!bucketName || !region || !accessKeyId || !secretAccessKey) {
+      this.logger.warn('AWS S3 configuration is incomplete. S3 storage features will be disabled.');
+      this.isConfigured = false;
+      return;
+    }
+
+    this.bucketName = bucketName;
+    this.region = region;
     this.publicBaseUrl = `https://${this.bucketName}.s3.${this.region}.amazonaws.com`;
 
     this.s3Client = new S3Client({
       region: this.region,
       credentials: {
-        accessKeyId: this.configService.get<string>('aws.accessKeyId'),
-        secretAccessKey: this.configService.get<string>('aws.secretAccessKey'),
+        accessKeyId,
+        secretAccessKey,
       },
     });
+
+    this.isConfigured = true;
+    this.logger.log('S3 Service initialized successfully');
+  }
+
+  private ensureConfigured(): void {
+    if (!this.isConfigured) {
+      throw new Error('S3 storage is not configured. Please provide AWS credentials in environment variables.');
+    }
   }
 
   async generatePresignedUploadUrl(
@@ -46,6 +67,7 @@ export class S3Service {
     fileSize: number,
     category?: string,
   ): Promise<PresignedUploadResult> {
+    this.ensureConfigured();
     try {
       const fileKey = this.generateFileKey(userId, fileName, category);
       const expiresIn = 3600; // 1 hour
@@ -84,6 +106,7 @@ export class S3Service {
     fileKey: string,
     expiresIn: number = 3600,
   ): Promise<PresignedDownloadResult> {
+    this.ensureConfigured();
     try {
       const command = new GetObjectCommand({
         Bucket: this.bucketName,
@@ -110,6 +133,7 @@ export class S3Service {
     mimeType: string,
     metadata?: Record<string, string>,
   ): Promise<string> {
+    this.ensureConfigured();
     try {
       const command = new PutObjectCommand({
         Bucket: this.bucketName,
@@ -131,6 +155,7 @@ export class S3Service {
   }
 
   async downloadFile(fileKey: string): Promise<Buffer> {
+    this.ensureConfigured();
     try {
       const command = new GetObjectCommand({
         Bucket: this.bucketName,
@@ -157,6 +182,7 @@ export class S3Service {
   }
 
   async deleteFile(fileKey: string): Promise<void> {
+    this.ensureConfigured();
     try {
       const command = new DeleteObjectCommand({
         Bucket: this.bucketName,
@@ -172,6 +198,7 @@ export class S3Service {
   }
 
   async fileExists(fileKey: string): Promise<boolean> {
+    this.ensureConfigured();
     try {
       const command = new HeadObjectCommand({
         Bucket: this.bucketName,
@@ -190,6 +217,7 @@ export class S3Service {
   }
 
   async getFileMetadata(fileKey: string): Promise<Record<string, any> | null> {
+    this.ensureConfigured();
     try {
       const command = new HeadObjectCommand({
         Bucket: this.bucketName,
@@ -197,7 +225,7 @@ export class S3Service {
       });
 
       const response = await this.s3Client.send(command);
-      
+
       return {
         contentType: response.ContentType,
         contentLength: response.ContentLength,
@@ -219,13 +247,13 @@ export class S3Service {
     const randomId = crypto.randomBytes(8).toString('hex');
     const extension = path.extname(fileName);
     const baseName = path.basename(fileName, extension);
-    
+
     // Sanitize filename
     const sanitizedBaseName = baseName.replace(/[^a-zA-Z0-9-_]/g, '_');
-    
+
     const categoryPath = category ? `${category}/` : '';
     const fileKey = `users/${userId}/${categoryPath}${timestamp}_${randomId}_${sanitizedBaseName}${extension}`;
-    
+
     return fileKey;
   }
 
@@ -235,21 +263,22 @@ export class S3Service {
 
   extractFileKeyFromUrl(url: string): string | null {
     const baseUrlPattern = new RegExp(`^${this.publicBaseUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/`);
-    
+
     if (baseUrlPattern.test(url)) {
       return url.replace(baseUrlPattern, '');
     }
-    
+
     return null;
   }
 
   // Utility methods for different file operations
   async copyFile(sourceKey: string, destinationKey: string): Promise<void> {
+    this.ensureConfigured();
     try {
       // First download the source file
       const fileBuffer = await this.downloadFile(sourceKey);
       const metadata = await this.getFileMetadata(sourceKey);
-      
+
       // Then upload to destination
       await this.uploadFile(
         destinationKey,
@@ -266,10 +295,11 @@ export class S3Service {
   }
 
   async moveFile(sourceKey: string, destinationKey: string): Promise<void> {
+    this.ensureConfigured();
     try {
       await this.copyFile(sourceKey, destinationKey);
       await this.deleteFile(sourceKey);
-      
+
       this.logger.debug(`File moved from ${sourceKey} to ${destinationKey}`);
     } catch (error) {
       this.logger.error(`Failed to move file from ${sourceKey} to ${destinationKey}`, error);
@@ -279,19 +309,19 @@ export class S3Service {
 
   generateThumbnailKey(originalKey: string): string {
     const pathParts = originalKey.split('/');
-    const fileName = pathParts.pop();
+    const fileName = pathParts.pop() ?? '';
     const directory = pathParts.join('/');
-    
+
     return `${directory}/thumbnails/thumb_${fileName}`;
   }
 
   generateProcessedKey(originalKey: string, suffix: string): string {
     const pathParts = originalKey.split('/');
-    const fileName = pathParts.pop();
+    const fileName = pathParts.pop() ?? '';
     const directory = pathParts.join('/');
     const extension = path.extname(fileName);
     const baseName = path.basename(fileName, extension);
-    
+
     return `${directory}/processed/${baseName}_${suffix}${extension}`;
   }
 }

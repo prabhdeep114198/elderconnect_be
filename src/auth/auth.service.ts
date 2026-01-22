@@ -25,7 +25,7 @@ export class AuthService {
     private readonly deviceRepository: Repository<Device>,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
-  ) {}
+  ) { }
 
   async register(registerDto: RegisterDto): Promise<{ user: Partial<User>; token: string }> {
     // Check if user already exists
@@ -70,7 +70,7 @@ export class AuthService {
 
     // Update login information
     user.resetLoginAttempts();
-    user.lastLoginIp = ipAddress;
+    user.lastLoginIp = ipAddress ?? user.lastLoginIp;
     await this.userRepository.save(user);
 
     // Generate JWT token
@@ -117,6 +117,30 @@ export class AuthService {
     return this.userRepository.findOne({
       where: { id: userId },
     });
+  }
+
+  async validateUserByEmail(email: string): Promise<User | null> {
+    return this.userRepository.findOne({
+      where: { email },
+    });
+  }
+
+  async registerFromFirebase(firebaseUser: any): Promise<User> {
+    const [firstName, ...lastNameParts] = (firebaseUser.name || 'User').split(' ');
+    const lastName = lastNameParts.join(' ') || 'Firebase';
+
+    const user = this.userRepository.create({
+      id: firebaseUser.uid, // Using Firebase UID as local ID
+      email: firebaseUser.email,
+      firstName,
+      lastName,
+      isActive: true,
+      isEmailVerified: firebaseUser.email_verified || false,
+      roles: [UserRole.ELDER],
+      password: crypto.randomBytes(16).toString('hex'), // Random password for local DB compatibility
+    });
+
+    return this.userRepository.save(user);
   }
 
   async registerDevice(userId: string, deviceDto: DeviceRegisterDto): Promise<Device> {
@@ -191,14 +215,14 @@ export class AuthService {
       roles: user.roles,
     };
 
-    return this.jwtService.sign(payload, {
-      expiresIn: this.configService.get<string>('jwt.expiresIn'),
-    });
+    // read expiresIn from config (may be string or number) and cast to any to satisfy overload typings
+    const expiresIn = this.configService.get<string | number | undefined>('jwt.expiresIn');
+    return this.jwtService.sign(payload, { expiresIn } as any);
   }
 
   async refreshToken(userId: string): Promise<string> {
     const user = await this.validateUserById(userId);
-    
+
     if (!user) {
       throw new UnauthorizedException('User not found');
     }
@@ -216,7 +240,7 @@ export class AuthService {
     }
 
     const isOldPasswordValid = await user.validatePassword(oldPassword);
-    
+
     if (!isOldPasswordValid) {
       throw new BadRequestException('Current password is incorrect');
     }
@@ -232,9 +256,9 @@ export class AuthService {
 
     if (user) {
       user.resetPasswordToken = crypto.randomBytes(32).toString('hex');
-      user.resetPasswordExpires = new Date(Date.now() + 3600000); // 1 hour
+      user.resetPasswordExpires = new Date(Date.now() + 3600000);
       await this.userRepository.save(user);
-      
+
       // TODO: Send password reset email
     }
   }
@@ -251,8 +275,7 @@ export class AuthService {
     }
 
     user.password = newPassword;
-    user.resetPasswordToken = null;
-    user.resetPasswordExpires = null;
+    user.resetPasswordToken = "null";
     await this.userRepository.save(user);
   }
 }

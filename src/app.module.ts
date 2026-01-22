@@ -7,8 +7,17 @@ import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerGuard } from '@nestjs/throttler';
 
 // Configuration
-import { AppConfig } from './config/app.config';
-import { DatabaseConfig } from './config/database.config';
+import {
+  appConfig,
+  jwtConfig,
+  awsConfig,
+  twilioConfig,
+  firebaseConfig,
+  throttleConfig,
+  fileUploadConfig,
+  n8nConfig
+} from './config/app.config';
+import { databaseConfig } from './config/database.config';
 
 // Modules
 import { AuthModule } from './auth/auth.module';
@@ -16,10 +25,11 @@ import { ProfileModule } from './profile/profile.module';
 import { DeviceModule } from './device/device.module';
 import { MediaModule } from './media/media.module';
 import { NotificationModule } from './notification/notification.module';
+import { AuditLogModule } from './common/services/audit-log.module';
+import { ChatModule } from './chat/chat.module';
 
-// Common services and interceptors
+// Common interceptors
 import { AuditLogInterceptor } from './common/interceptors/audit-log.interceptor';
-import { AuditLogService } from './common/services/audit-log.service';
 
 // Entities for different databases
 import { User } from './auth/entities/user.entity';
@@ -33,34 +43,32 @@ import { SOSAlert } from './device/entities/sos-alert.entity';
 import { MediaFile } from './media/entities/media-file.entity';
 import { Notification } from './notification/entities/notification.entity';
 import { NotificationTemplate } from './notification/entities/notification-template.entity';
-import { AuditLog } from './common/entities/audit-log.entity';
+import { AuditLog } from './common/services/entities/audit-log.entity';
 
 @Module({
   imports: [
     // Configuration
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [AppConfig, DatabaseConfig],
+      load: [
+        appConfig,
+        databaseConfig,
+        jwtConfig,
+        awsConfig,
+        twilioConfig,
+        firebaseConfig,
+        throttleConfig,
+        fileUploadConfig,
+        n8nConfig
+      ],
       envFilePath: ['.env.local', '.env'],
     }),
 
     // Rate limiting
     ThrottlerModule.forRoot([
-      {
-        name: 'short',
-        ttl: 1000, // 1 second
-        limit: 10, // 10 requests per second
-      },
-      {
-        name: 'medium',
-        ttl: 60000, // 1 minute
-        limit: 100, // 100 requests per minute
-      },
-      {
-        name: 'long',
-        ttl: 900000, // 15 minutes
-        limit: 1000, // 1000 requests per 15 minutes
-      },
+      { name: 'short', ttl: 1, limit: 10 },
+      { name: 'medium', ttl: 60, limit: 100 },
+      { name: 'long', ttl: 900, limit: 1000 },
     ]),
 
     // Scheduling
@@ -81,12 +89,10 @@ import { AuditLog } from './common/entities/audit-log.entity';
         entities: [User, Device],
         synchronize: configService.get('app.environment') === 'development',
         logging: configService.get('app.environment') === 'development',
-        ssl: configService.get('app.environment') === 'production' ? { rejectUnauthorized: false } : false,
-        extra: {
-          max: 20,
-          idleTimeoutMillis: 30000,
-          connectionTimeoutMillis: 2000,
-        },
+        ssl: configService.get('app.environment') === 'production'
+          ? { rejectUnauthorized: false }
+          : false,
+        extra: { max: 20, idleTimeoutMillis: 30000, connectionTimeoutMillis: 2000 },
       }),
       inject: [ConfigService],
     }),
@@ -105,12 +111,10 @@ import { AuditLog } from './common/entities/audit-log.entity';
         entities: [UserProfile, Medication, MedicationLog],
         synchronize: configService.get('app.environment') === 'development',
         logging: configService.get('app.environment') === 'development',
-        ssl: configService.get('app.environment') === 'production' ? { rejectUnauthorized: false } : false,
-        extra: {
-          max: 20,
-          idleTimeoutMillis: 30000,
-          connectionTimeoutMillis: 2000,
-        },
+        ssl: configService.get('app.environment') === 'production'
+          ? { rejectUnauthorized: false }
+          : false,
+        extra: { max: 20, idleTimeoutMillis: 30000, connectionTimeoutMillis: 2000 },
       }),
       inject: [ConfigService],
     }),
@@ -129,12 +133,10 @@ import { AuditLog } from './common/entities/audit-log.entity';
         entities: [TelemetryData, Vitals, SOSAlert],
         synchronize: configService.get('app.environment') === 'development',
         logging: configService.get('app.environment') === 'development',
-        ssl: configService.get('app.environment') === 'production' ? { rejectUnauthorized: false } : false,
-        extra: {
-          max: 30,
-          idleTimeoutMillis: 30000,
-          connectionTimeoutMillis: 2000,
-        },
+        ssl: configService.get('app.environment') === 'production'
+          ? { rejectUnauthorized: false }
+          : false,
+        extra: { max: 30, idleTimeoutMillis: 30000, connectionTimeoutMillis: 2000 },
       }),
       inject: [ConfigService],
     }),
@@ -153,12 +155,10 @@ import { AuditLog } from './common/entities/audit-log.entity';
         entities: [MediaFile],
         synchronize: configService.get('app.environment') === 'development',
         logging: configService.get('app.environment') === 'development',
-        ssl: configService.get('app.environment') === 'production' ? { rejectUnauthorized: false } : false,
-        extra: {
-          max: 15,
-          idleTimeoutMillis: 30000,
-          connectionTimeoutMillis: 2000,
-        },
+        ssl: configService.get('app.environment') === 'production'
+          ? { rejectUnauthorized: false }
+          : false,
+        extra: { max: 15, idleTimeoutMillis: 30000, connectionTimeoutMillis: 2000 },
       }),
       inject: [ConfigService],
     }),
@@ -177,12 +177,10 @@ import { AuditLog } from './common/entities/audit-log.entity';
         entities: [AuditLog, Notification, NotificationTemplate],
         synchronize: configService.get('app.environment') === 'development',
         logging: configService.get('app.environment') === 'development',
-        ssl: configService.get('app.environment') === 'production' ? { rejectUnauthorized: false } : false,
-        extra: {
-          max: 25,
-          idleTimeoutMillis: 30000,
-          connectionTimeoutMillis: 2000,
-        },
+        ssl: configService.get('app.environment') === 'production'
+          ? { rejectUnauthorized: false }
+          : false,
+        extra: { max: 25, idleTimeoutMillis: 30000, connectionTimeoutMillis: 2000 },
       }),
       inject: [ConfigService],
     }),
@@ -193,20 +191,12 @@ import { AuditLog } from './common/entities/audit-log.entity';
     DeviceModule,
     MediaModule,
     NotificationModule,
+    AuditLogModule,
+    ChatModule,
   ],
   providers: [
-    // Global guards
-    {
-      provide: APP_GUARD,
-      useClass: ThrottlerGuard,
-    },
-    // Global interceptors
-    {
-      provide: APP_INTERCEPTOR,
-      useClass: AuditLogInterceptor,
-    },
-    // Global services
-    AuditLogService,
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_INTERCEPTOR, useClass: AuditLogInterceptor },
   ],
 })
-export class AppModule {}
+export class AppModule { }

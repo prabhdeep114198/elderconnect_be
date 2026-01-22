@@ -12,22 +12,23 @@ export class HealthController {
   @ApiResponse({ status: 200, description: 'Health check successful' })
   async getHealth() {
     const health = await this.healthService.getHealthStatus();
+    const { status: healthStatus, ...rest } = health || {};
     return {
-      status: 'ok',
+      status: healthStatus ?? 'ok',
       timestamp: new Date().toISOString(),
-      ...health,
+      ...rest,
     };
   }
-
   @Get('detailed')
   @ApiOperation({ summary: 'Get detailed health status' })
   @ApiResponse({ status: 200, description: 'Detailed health check successful' })
   async getDetailedHealth() {
     const health = await this.healthService.getDetailedHealthStatus();
+    const { status: healthStatus, ...rest } = health || {};
     return {
-      status: 'ok',
+      status: healthStatus ?? 'ok',
       timestamp: new Date().toISOString(),
-      ...health,
+      ...rest,
     };
   }
 

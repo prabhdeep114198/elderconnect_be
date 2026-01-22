@@ -24,12 +24,14 @@ export class TwilioService {
   private readonly fromNumber: string;
 
   constructor(private readonly configService: ConfigService) {
+    // Make these optional since we are switching to N8N
     const accountSid = this.configService.get<string>('twilio.accountSid');
     const authToken = this.configService.get<string>('twilio.authToken');
-    this.fromNumber = this.configService.get<string>('twilio.fromNumber');
+    // Don't throw if missing, just default to empty string or null
+    this.fromNumber = this.configService.get<string>('twilio.fromNumber') || '';
 
-    if (!accountSid || !authToken) {
-      this.logger.warn('Twilio credentials not configured. SMS and voice services will be disabled.');
+    if (!accountSid || !authToken || !this.fromNumber) {
+      this.logger.warn('Twilio credentials not configured. SMS and voice services will be disabled (Using N8N).');
       return;
     }
 
@@ -48,7 +50,7 @@ export class TwilioService {
     try {
       // Validate phone number format
       const formattedNumber = this.formatPhoneNumber(to);
-      
+
       const messageOptions: any = {
         body: message,
         from: this.fromNumber,
@@ -72,7 +74,7 @@ export class TwilioService {
       };
     } catch (error) {
       this.logger.error(`Failed to send SMS to ${to}:`, error);
-      
+
       return {
         success: false,
         error: error.message || 'Unknown error occurred',
@@ -82,25 +84,25 @@ export class TwilioService {
 
   async sendBulkSMS(recipients: { to: string; message: string }[], priority: string = 'normal'): Promise<SMSResult[]> {
     const results: SMSResult[] = [];
-    
+
     // Process in batches to avoid rate limiting
     const batchSize = 10;
     for (let i = 0; i < recipients.length; i += batchSize) {
       const batch = recipients.slice(i, i + batchSize);
-      
-      const batchPromises = batch.map(recipient => 
+
+      const batchPromises = batch.map(recipient =>
         this.sendSMS(recipient.to, recipient.message, priority)
       );
-      
+
       const batchResults = await Promise.all(batchPromises);
       results.push(...batchResults);
-      
+
       // Add delay between batches for rate limiting
       if (i + batchSize < recipients.length) {
         await this.delay(1000); // 1 second delay
       }
     }
-    
+
     return results;
   }
 
@@ -114,7 +116,7 @@ export class TwilioService {
 
     try {
       const formattedNumber = this.formatPhoneNumber(to);
-      
+
       // Create TwiML for the voice message
       const twiml = `<?xml version="1.0" encoding="UTF-8"?>
         <Response>
@@ -143,7 +145,7 @@ export class TwilioService {
       };
     } catch (error) {
       this.logger.error(`Failed to make voice call to ${to}:`, error);
-      
+
       return {
         success: false,
         error: error.message || 'Unknown error occurred',
@@ -158,7 +160,7 @@ export class TwilioService {
 
     try {
       const message = await this.client.messages(messageId).fetch();
-      
+
       return {
         sid: message.sid,
         status: message.status,
@@ -183,7 +185,7 @@ export class TwilioService {
 
     try {
       const call = await this.client.calls(callId).fetch();
-      
+
       return {
         sid: call.sid,
         status: call.status,
@@ -210,14 +212,14 @@ export class TwilioService {
 
     try {
       const lookup = await this.client.lookups.v1.phoneNumbers(phoneNumber).fetch();
-      
+
       return {
         isValid: true,
         formatted: lookup.phoneNumber,
       };
     } catch (error) {
       this.logger.warn(`Phone number validation failed for ${phoneNumber}:`, error.message);
-      
+
       return {
         isValid: false,
         error: error.message || 'Invalid phone number',
@@ -228,7 +230,7 @@ export class TwilioService {
   private formatPhoneNumber(phoneNumber: string): string {
     // Remove all non-digit characters
     const digits = phoneNumber.replace(/\D/g, '');
-    
+
     // Add country code if not present (assuming US/Canada)
     if (digits.length === 10) {
       return `+1${digits}`;
@@ -237,7 +239,7 @@ export class TwilioService {
     } else if (digits.startsWith('+')) {
       return phoneNumber;
     }
-    
+
     return `+${digits}`;
   }
 
@@ -258,13 +260,13 @@ export class TwilioService {
   async handleSMSStatusWebhook(body: any): Promise<void> {
     try {
       const { MessageSid, MessageStatus, ErrorCode, ErrorMessage } = body;
-      
+
       this.logger.log(`SMS status update - ID: ${MessageSid}, Status: ${MessageStatus}`);
-      
+
       if (ErrorCode) {
         this.logger.error(`SMS error - ID: ${MessageSid}, Code: ${ErrorCode}, Message: ${ErrorMessage}`);
       }
-      
+
       // Here you would typically update the notification status in the database
       // This would be handled by the NotificationService
     } catch (error) {
@@ -275,9 +277,9 @@ export class TwilioService {
   async handleVoiceStatusWebhook(body: any): Promise<void> {
     try {
       const { CallSid, CallStatus, Duration } = body;
-      
+
       this.logger.log(`Voice call status update - ID: ${CallSid}, Status: ${CallStatus}, Duration: ${Duration}`);
-      
+
       // Here you would typically update the notification status in the database
       // This would be handled by the NotificationService
     } catch (error) {
@@ -288,13 +290,13 @@ export class TwilioService {
   // Emergency services integration
   async sendEmergencySMS(to: string, location: { latitude: number; longitude: number }, context: string): Promise<SMSResult> {
     const emergencyMessage = `EMERGENCY ALERT: ${context}. Location: https://maps.google.com/?q=${location.latitude},${location.longitude}. Please respond immediately.`;
-    
+
     return this.sendSMS(to, emergencyMessage, 'critical');
   }
 
   async makeEmergencyCall(to: string, location: { latitude: number; longitude: number }, context: string): Promise<VoiceCallResult> {
     const emergencyMessage = `Emergency alert. ${context}. The person is located at coordinates ${location.latitude}, ${location.longitude}. Please respond immediately.`;
-    
+
     return this.makeVoiceCall(to, emergencyMessage, 'critical');
   }
 }

@@ -254,7 +254,7 @@ export class ProfileController {
     @Param('medicationId') medicationId: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
-    @CurrentUser() currentUser,
+    @CurrentUser() currentUser?: any,
   ) {
     if (userId !== currentUser.id && !currentUser.roles.includes(UserRole.CAREGIVER) && !currentUser.roles.includes(UserRole.ADMIN)) {
       throw new Error('Unauthorized to view medication logs for this user');

@@ -1,7 +1,8 @@
 import { registerAs } from '@nestjs/config';
 
 export const appConfig = registerAs('app', () => ({
-  port: parseInt(process.env.PORT, 10) || 3000,
+  port: parseInt(process.env.PORT || '3000', 10),
+  environment: process.env.NODE_ENV || 'development',
   nodeEnv: process.env.NODE_ENV || 'development',
   apiVersion: process.env.API_VERSION || 'v1',
   globalPrefix: 'api',
@@ -32,11 +33,17 @@ export const firebaseConfig = registerAs('firebase', () => ({
 }));
 
 export const throttleConfig = registerAs('throttle', () => ({
-  ttl: parseInt(process.env.THROTTLE_TTL, 10) || 60,
-  limit: parseInt(process.env.THROTTLE_LIMIT, 10) || 100,
+  ttl: 60,
+  limit: 100,
 }));
 
 export const fileUploadConfig = registerAs('fileUpload', () => ({
-  maxFileSize: parseInt(process.env.MAX_FILE_SIZE, 10) || 10485760, // 10MB
+  maxFileSize: 10485760, // 10MB
   allowedFileTypes: (process.env.ALLOWED_FILE_TYPES || 'image/jpeg,image/png,image/gif,video/mp4,audio/mpeg').split(','),
 }));
+
+export const n8nConfig = registerAs('n8n', () => ({
+  webhookUrl: process.env.N8N_WEBHOOK_URL,
+  apiKey: process.env.N8N_API_KEY,
+}));
+

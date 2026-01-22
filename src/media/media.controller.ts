@@ -18,7 +18,7 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes, ApiQuery } from '@nestjs/swagger';
-import { Response } from 'express';
+import type { Response } from 'express';
 import { MediaService } from './media.service';
 import { UploadMediaDto, UpdateMediaDto, MediaQueryDto, PresignedUrlDto } from './dto/media.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -81,7 +81,7 @@ export class MediaController {
   @ApiResponse({ status: 201, description: 'File uploaded successfully' })
   @ApiResponse({ status: 400, description: 'Invalid file or parameters' })
   async uploadFile(
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile() file: any,
     @Body() uploadMediaDto: UploadMediaDto,
     @CurrentUser() currentUser,
   ) {
