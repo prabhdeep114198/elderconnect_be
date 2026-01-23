@@ -14,7 +14,7 @@ export class FirebaseStrategy extends PassportStrategy(Strategy, 'firebase') {
 
     async validate(token: string) {
         if (admin.apps.length === 0) {
-            throw new UnauthorizedException('Firebase Admin SDK not initialized');
+            throw new UnauthorizedException('Firebase Admin SDK not initialized. Please ensure FIREBASE_PROJECT_ID, FIREBASE_PRIVATE_KEY, and FIREBASE_CLIENT_EMAIL are set correctly.');
         }
         try {
             const firebaseUser = await admin.auth().verifyIdToken(token);

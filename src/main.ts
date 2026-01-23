@@ -92,16 +92,6 @@ async function bootstrap() {
     logger.log(`Swagger documentation available at http://localhost:${port}/api/docs`);
   }
 
-  // Health check endpoint
-  app.getHttpAdapter().get('/health', (req, res) => {
-    res.status(200).json({
-      status: 'ok',
-      timestamp: new Date().toISOString(),
-      uptime: process.uptime(),
-      environment,
-      version: process.env.npm_package_version || '1.0.0',
-    });
-  });
 
   // Graceful shutdown
   process.on('SIGTERM', async () => {

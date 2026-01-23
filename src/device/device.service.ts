@@ -23,7 +23,7 @@ export class DeviceService {
     @InjectRepository(SOSAlert, 'vitals')
     private readonly sosAlertRepository: Repository<SOSAlert>,
     private readonly kafkaService: KafkaService,
-  ) {}
+  ) { }
 
   // Telemetry Management
   async createTelemetry(
@@ -31,11 +31,35 @@ export class DeviceService {
     userId: string,
     createTelemetryDto: CreateTelemetryDto,
   ): Promise<TelemetryData> {
+    // Handle flat payload if metricType or value is missing
+    const metricType = createTelemetryDto.metricType || 'multi_metric';
+    const value = createTelemetryDto.value || { ...createTelemetryDto };
+
+    // Remove known DTO fields from value if it's a flat payload
+    if (!createTelemetryDto.metricType || !createTelemetryDto.value) {
+      delete (value as any).metricType;
+      delete (value as any).value;
+      delete (value as any).timestamp;
+      delete (value as any).unit;
+      delete (value as any).latitude;
+      delete (value as any).longitude;
+      delete (value as any).location;
+      delete (value as any).metadata;
+      delete (value as any).quality;
+      delete (value as any).confidenceScore;
+    }
+
+    const timestamp = createTelemetryDto.timestamp
+      ? new Date(createTelemetryDto.timestamp)
+      : new Date();
+
     const telemetry = this.telemetryRepository.create({
       deviceId,
       userId,
       ...createTelemetryDto,
-      timestamp: new Date(createTelemetryDto.timestamp),
+      metricType,
+      value,
+      timestamp,
     });
 
     const savedTelemetry = await this.telemetryRepository.save(telemetry);
@@ -44,10 +68,10 @@ export class DeviceService {
     await this.kafkaService.publishTelemetry({
       userId,
       deviceId,
-      metricType: createTelemetryDto.metricType,
-      value: createTelemetryDto.value,
+      metricType: telemetry.metricType,
+      value: telemetry.value,
       timestamp: savedTelemetry.timestamp,
-      metadata: createTelemetryDto.metadata,
+      metadata: telemetry.metadata,
     });
 
     return savedTelemetry;
@@ -58,14 +82,15 @@ export class DeviceService {
     userId: string,
     bulkTelemetryDto: BulkTelemetryDto,
   ): Promise<TelemetryData[]> {
-    const telemetryData = bulkTelemetryDto.readings.map(reading => 
-      this.telemetryRepository.create({
+    const telemetryData = bulkTelemetryDto.readings.map(reading => {
+      const timestamp = reading.timestamp ? new Date(reading.timestamp) : new Date();
+      return this.telemetryRepository.create({
         deviceId,
         userId,
         ...reading,
-        timestamp: new Date(reading.timestamp),
-      })
-    );
+        timestamp,
+      });
+    });
 
     const savedTelemetry = await this.telemetryRepository.save(telemetryData);
 
@@ -122,10 +147,28 @@ export class DeviceService {
 
   // Vitals Management
   async createVitals(userId: string, createVitalsDto: CreateVitalsDto): Promise<Vitals> {
+    const vitalType = createVitalsDto.vitalType || createVitalsDto.type || 'unknown';
+    let reading = createVitalsDto.reading || createVitalsDto.value || {};
+
+    // If reading is a string (e.g. "125/85"), handle it
+    if (typeof reading === 'string' && vitalType === 'blood_pressure') {
+      const parts = reading.split('/');
+      reading = {
+        systolic: parseInt(parts[0]),
+        diastolic: parseInt(parts[1]),
+      };
+    }
+
+    const recordedAt = createVitalsDto.recordedAt
+      ? new Date(createVitalsDto.recordedAt)
+      : new Date();
+
     const vitals = this.vitalsRepository.create({
       userId,
       ...createVitalsDto,
-      recordedAt: new Date(createVitalsDto.recordedAt),
+      vitalType,
+      reading,
+      recordedAt,
     });
 
     // Determine if reading is abnormal
@@ -231,7 +274,7 @@ export class DeviceService {
 
     let trend = 'stable';
     const changePercent = ((secondAvg - firstAvg) / firstAvg) * 100;
-    
+
     if (Math.abs(changePercent) > 5) {
       trend = changePercent > 0 ? 'increasing' : 'decreasing';
     }
@@ -266,9 +309,11 @@ export class DeviceService {
 
   // SOS Alert Management
   async createSOSAlert(userId: string, createSOSDto: CreateSOSDto): Promise<SOSAlert> {
+    const description = createSOSDto.description || createSOSDto.notes || 'No description provided';
     const alert = this.sosAlertRepository.create({
       userId,
       ...createSOSDto,
+      description,
       type: createSOSDto.type as SOSType,
       priority: (createSOSDto.priority as AlertPriority) || AlertPriority.HIGH,
     });
@@ -376,7 +421,7 @@ export class DeviceService {
   }
 
   async getCriticalAlerts(userId?: string): Promise<SOSAlert[]> {
-    const whereCondition: any = { 
+    const whereCondition: any = {
       status: SOSStatus.ACTIVE,
       priority: AlertPriority.CRITICAL,
     };
@@ -447,7 +492,7 @@ export class DeviceService {
     // Reduce score based on alerts
     const criticalAlerts = alerts.filter(a => a.priority === AlertPriority.CRITICAL).length;
     const highAlerts = alerts.filter(a => a.priority === AlertPriority.HIGH).length;
-    
+
     score -= criticalAlerts * 20;
     score -= highAlerts * 10;
 

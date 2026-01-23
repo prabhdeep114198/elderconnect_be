@@ -24,11 +24,11 @@ import { SOSStatus } from './entities/sos-alert.entity';
 
 @ApiTags('Device & Telemetry')
 @Controller('v1')
-@UseGuards(AuthGuard('jwt'), RolesGuard)
+@UseGuards(AuthGuard(['jwt', 'firebase']), RolesGuard)
 @UseInterceptors(AuditLogInterceptor)
 @ApiBearerAuth()
 export class DeviceController {
-  constructor(private readonly deviceService: DeviceService) {}
+  constructor(private readonly deviceService: DeviceService) { }
 
   // Telemetry Endpoints
   @Post('devices/:deviceId/telemetry')
