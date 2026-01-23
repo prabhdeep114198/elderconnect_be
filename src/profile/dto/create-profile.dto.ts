@@ -46,6 +46,17 @@ export class CreateProfileDto {
   height?: number;
 
   @ApiProperty({
+    description: 'Height in centimeters (alias for height)',
+    example: 175.5,
+    required: false,
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(50)
+  @Max(300)
+  heightCm?: number;
+
+  @ApiProperty({
     description: 'Weight in kilograms',
     example: 70.5,
     required: false,
@@ -55,6 +66,17 @@ export class CreateProfileDto {
   @Min(20)
   @Max(500)
   weight?: number;
+
+  @ApiProperty({
+    description: 'Weight in kilograms (alias for weight)',
+    example: 70.5,
+    required: false,
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(20)
+  @Max(500)
+  weightKg?: number;
 
   @ApiProperty({
     description: 'Blood type',

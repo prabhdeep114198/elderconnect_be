@@ -47,17 +47,37 @@ export class DeviceRegisterDto {
   @ApiProperty({
     description: 'Device name',
     example: 'Smart Watch Pro',
+    required: false,
   })
+  @IsOptional()
   @IsString()
-  @MinLength(1)
-  name: string;
+  name?: string;
 
   @ApiProperty({
     description: 'Device type',
     example: 'wearable',
   })
   @IsString()
-  type: string;
+  @IsOptional()
+  type?: string;
+
+  @ApiProperty({
+    description: 'Alias for type',
+    example: 'wearable',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  deviceType?: string;
+
+  @ApiProperty({
+    description: 'Owner ID (for registration without user context)',
+    example: 'uuid',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  ownerId?: string;
 
   @ApiProperty({
     description: 'Device manufacturer',
@@ -101,4 +121,12 @@ export class DeviceRegisterDto {
   })
   @IsOptional()
   configuration?: Record<string, any>;
+
+  @ApiProperty({
+    description: 'Certificate fingerprint',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  certificateFingerprint?: string;
 }

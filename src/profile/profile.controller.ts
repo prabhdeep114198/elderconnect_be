@@ -17,6 +17,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@ne
 import { ProfileService } from './profile.service';
 import { CreateProfileDto, UpdateProfileDto } from './dto/create-profile.dto';
 import { CreateMedicationDto, UpdateMedicationDto, LogMedicationDto } from './dto/medication.dto';
+import { CreateAppointmentDto, UpdateAppointmentDto } from './dto/appointment.dto';
 import { UpdateHealthMetricDto } from './dto/update-health-metric.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -26,7 +27,7 @@ import { UserRole } from '../common/enums/user-role.enum';
 
 @ApiTags('User Profile')
 @Controller('v1/users/:userId')
-@UseGuards(AuthGuard('jwt'), RolesGuard)
+@UseGuards(AuthGuard(['jwt', 'firebase']), RolesGuard)
 @UseInterceptors(AuditLogInterceptor)
 @ApiBearerAuth()
 export class ProfileController {
@@ -270,7 +271,7 @@ export class ProfileController {
   }
 
   // Analytics and Reports
-  @Get('health-summary')
+  @Get(['health-summary', 'reports/health-summary'])
   @ApiOperation({ summary: 'Get user health summary' })
   @ApiResponse({ status: 200, description: 'Health summary retrieved successfully' })
   async getHealthSummary(
@@ -289,7 +290,7 @@ export class ProfileController {
     };
   }
 
-  @Get('medication-compliance')
+  @Get(['medication-compliance', 'reports/medication-compliance'])
   @ApiOperation({ summary: 'Get medication compliance report' })
   @ApiQuery({ name: 'days', required: false, type: Number })
   @ApiResponse({ status: 200, description: 'Compliance report retrieved successfully' })
@@ -379,6 +380,103 @@ export class ProfileController {
         ],
         raw: metrics // Send raw data too just in case
       }
+    };
+  }
+
+  // Appointment Management
+  @Post('appointments')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Create a new appointment' })
+  async createAppointment(
+    @Param('userId') userId: string,
+    @Body() createDto: CreateAppointmentDto,
+    @CurrentUser() currentUser,
+  ) {
+    if (userId !== currentUser.id && !currentUser.roles.includes(UserRole.CAREGIVER) && !currentUser.roles.includes(UserRole.ADMIN)) {
+      throw new Error('Unauthorized to create appointment for this user');
+    }
+
+    const appointment = await this.profileService.createAppointment(userId, createDto);
+
+    return {
+      message: 'Appointment created successfully',
+      data: { appointment },
+    };
+  }
+
+  @Get('appointments')
+  @ApiOperation({ summary: 'Get user appointments' })
+  async getAppointments(
+    @Param('userId') userId: string,
+    @CurrentUser() currentUser,
+  ) {
+    if (userId !== currentUser.id && !currentUser.roles.includes(UserRole.CAREGIVER) && !currentUser.roles.includes(UserRole.ADMIN)) {
+      throw new Error('Unauthorized to view appointments for this user');
+    }
+
+    const appointments = await this.profileService.getAppointments(userId);
+
+    return {
+      message: 'Appointments retrieved successfully',
+      data: { appointments },
+    };
+  }
+
+  @Get('appointments/:appointmentId')
+  @ApiOperation({ summary: 'Get specific appointment' })
+  async getAppointment(
+    @Param('userId') userId: string,
+    @Param('appointmentId') appointmentId: string,
+    @CurrentUser() currentUser,
+  ) {
+    if (userId !== currentUser.id && !currentUser.roles.includes(UserRole.CAREGIVER) && !currentUser.roles.includes(UserRole.ADMIN)) {
+      throw new Error('Unauthorized to view appointment for this user');
+    }
+
+    const appointment = await this.profileService.getAppointment(userId, appointmentId);
+
+    return {
+      message: 'Appointment retrieved successfully',
+      data: { appointment },
+    };
+  }
+
+  @Put('appointments/:appointmentId')
+  @ApiOperation({ summary: 'Update appointment' })
+  async updateAppointment(
+    @Param('userId') userId: string,
+    @Param('appointmentId') appointmentId: string,
+    @Body() updateDto: UpdateAppointmentDto,
+    @CurrentUser() currentUser,
+  ) {
+    if (userId !== currentUser.id && !currentUser.roles.includes(UserRole.CAREGIVER) && !currentUser.roles.includes(UserRole.ADMIN)) {
+      throw new Error('Unauthorized to update appointment for this user');
+    }
+
+    const appointment = await this.profileService.updateAppointment(userId, appointmentId, updateDto);
+
+    return {
+      message: 'Appointment updated successfully',
+      data: { appointment },
+    };
+  }
+
+  @Delete('appointments/:appointmentId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Delete appointment' })
+  async deleteAppointment(
+    @Param('userId') userId: string,
+    @Param('appointmentId') appointmentId: string,
+    @CurrentUser() currentUser,
+  ) {
+    if (userId !== currentUser.id && !currentUser.roles.includes(UserRole.CAREGIVER) && !currentUser.roles.includes(UserRole.ADMIN)) {
+      throw new Error('Unauthorized to delete appointment for this user');
+    }
+
+    await this.profileService.deleteAppointment(userId, appointmentId);
+
+    return {
+      message: 'Appointment deleted successfully',
     };
   }
 }

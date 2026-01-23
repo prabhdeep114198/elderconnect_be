@@ -54,7 +54,8 @@ export class CreateMedicationDto {
   })
   @IsString()
   @MaxLength(50)
-  unit: string;
+  @IsOptional()
+  unit?: string;
 
   @ApiProperty({
     description: 'Special instructions',
@@ -74,6 +75,15 @@ export class CreateMedicationDto {
   @IsString()
   @MaxLength(255)
   prescribedBy?: string;
+
+  @ApiProperty({
+    description: 'Time of medication',
+    example: '08:00',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  time?: string;
 
   @ApiProperty({
     description: 'Start date',

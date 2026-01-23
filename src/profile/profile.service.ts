@@ -12,6 +12,8 @@ import { MedicationLog, MedicationLogStatus } from './entities/medication-log.en
 import { CreateProfileDto, UpdateProfileDto } from './dto/create-profile.dto';
 import { CreateMedicationDto, UpdateMedicationDto, LogMedicationDto } from './dto/medication.dto';
 import { DailyHealthMetric } from './entities/daily-health-metric.entity';
+import { Appointment } from './entities/appointment.entity';
+import { CreateAppointmentDto, UpdateAppointmentDto } from './dto/appointment.dto';
 import { UpdateHealthMetricDto } from './dto/update-health-metric.dto';
 
 @Injectable()
@@ -25,6 +27,8 @@ export class ProfileService {
     private readonly medicationLogRepository: Repository<MedicationLog>,
     @InjectRepository(DailyHealthMetric, 'profile')
     private readonly healthMetricRepository: Repository<DailyHealthMetric>,
+    @InjectRepository(Appointment, 'profile')
+    private readonly appointmentRepository: Repository<Appointment>,
   ) { }
 
   // Profile Management
@@ -41,6 +45,8 @@ export class ProfileService {
     const profile = this.profileRepository.create({
       userId,
       ...createProfileDto,
+      height: createProfileDto.height ?? createProfileDto.heightCm,
+      weight: createProfileDto.weight ?? createProfileDto.weightKg,
       dateOfBirth: createProfileDto.dateOfBirth ? new Date(createProfileDto.dateOfBirth) : undefined,
     });
 
@@ -65,6 +71,8 @@ export class ProfileService {
 
     Object.assign(profile, {
       ...updateProfileDto,
+      height: updateProfileDto.height ?? updateProfileDto.heightCm ?? profile.height,
+      weight: updateProfileDto.weight ?? updateProfileDto.weightKg ?? profile.weight,
       dateOfBirth: updateProfileDto.dateOfBirth ? new Date(updateProfileDto.dateOfBirth) : profile.dateOfBirth,
     });
 
@@ -80,9 +88,24 @@ export class ProfileService {
   async createMedication(userId: string, createMedicationDto: CreateMedicationDto): Promise<Medication> {
     const profile = await this.getProfile(userId);
 
+    // Handle unit if missing
+    let unit = createMedicationDto.unit;
+    if (!unit) {
+      const match = createMedicationDto.dosage.match(/([a-zA-Z]+)$/);
+      unit = match ? match[1] : 'units';
+    }
+
+    // Handle schedule from time
+    let schedule = createMedicationDto.schedule;
+    if (!schedule && createMedicationDto.time) {
+      schedule = { daily: createMedicationDto.time };
+    }
+
     const partialMedication: Partial<Medication> = {
       userProfileId: profile.id,
       ...createMedicationDto,
+      unit,
+      schedule,
       startDate: new Date(createMedicationDto.startDate),
       endDate: createMedicationDto.endDate ? new Date(createMedicationDto.endDate) : undefined,
     };
@@ -403,5 +426,71 @@ export class ProfileService {
     }
 
     return metric;
+  }
+
+  // Appointment Management
+  async createAppointment(userId: string, createDto: CreateAppointmentDto): Promise<Appointment> {
+    const profile = await this.getProfile(userId);
+
+    const scheduledAtStr = createDto.scheduledAt || createDto.dateTime;
+    if (!scheduledAtStr) {
+      throw new BadRequestException('Appointment date and time (scheduledAt or dateTime) is required');
+    }
+
+    const appointment = this.appointmentRepository.create({
+      userProfileId: profile.id,
+      ...createDto,
+      title: createDto.title || createDto.specialty || `Appointment with ${createDto.doctorName || 'Doctor'}`,
+      scheduledAt: new Date(scheduledAtStr),
+      notes: createDto.notes || createDto.specialty,
+    });
+
+    return this.appointmentRepository.save(appointment);
+  }
+
+  async getAppointments(userId: string): Promise<Appointment[]> {
+    const profile = await this.getProfile(userId);
+
+    return this.appointmentRepository.find({
+      where: { userProfileId: profile.id },
+      order: { scheduledAt: 'ASC' },
+    });
+  }
+
+  async getAppointment(userId: string, appointmentId: string): Promise<Appointment> {
+    const profile = await this.getProfile(userId);
+
+    const appointment = await this.appointmentRepository.findOne({
+      where: { id: appointmentId, userProfileId: profile.id },
+    });
+
+    if (!appointment) {
+      throw new NotFoundException('Appointment not found');
+    }
+
+    return appointment;
+  }
+
+  async updateAppointment(
+    userId: string,
+    appointmentId: string,
+    updateDto: UpdateAppointmentDto,
+  ): Promise<Appointment> {
+    const appointment = await this.getAppointment(userId, appointmentId);
+
+    const scheduledAtStr = updateDto.scheduledAt || updateDto.dateTime;
+
+    Object.assign(appointment, {
+      ...updateDto,
+      scheduledAt: scheduledAtStr ? new Date(scheduledAtStr) : appointment.scheduledAt,
+      notes: updateDto.notes || updateDto.specialty || appointment.notes,
+    });
+
+    return this.appointmentRepository.save(appointment);
+  }
+
+  async deleteAppointment(userId: string, appointmentId: string): Promise<void> {
+    const appointment = await this.getAppointment(userId, appointmentId);
+    await this.appointmentRepository.remove(appointment);
   }
 }

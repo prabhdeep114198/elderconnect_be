@@ -16,17 +16,21 @@ export class CreateTelemetryDto {
   @ApiProperty({
     description: 'Type of metric being recorded',
     example: 'heart_rate',
+    required: false,
   })
+  @IsOptional()
   @IsString()
   @MaxLength(100)
-  metricType: string;
+  metricType?: string;
 
   @ApiProperty({
     description: 'Metric value (flexible structure)',
     example: { bpm: 72, variability: 45 },
+    required: false,
   })
+  @IsOptional()
   @IsObject()
-  value: Record<string, any>;
+  value?: Record<string, any>;
 
   @ApiProperty({
     description: 'Unit of measurement',
@@ -41,9 +45,11 @@ export class CreateTelemetryDto {
   @ApiProperty({
     description: 'Timestamp when the reading was taken',
     example: '2024-01-01T12:00:00Z',
+    required: false,
   })
+  @IsOptional()
   @IsDateString()
-  timestamp: string;
+  timestamp?: string;
 
   @ApiProperty({
     description: 'Latitude coordinate',
@@ -103,9 +109,28 @@ export class CreateTelemetryDto {
   })
   @IsOptional()
   @IsNumber()
-  @Min(0)
-  @Max(1)
   confidenceScore?: number;
+
+  // IoT Flat Payload Support
+  @IsOptional()
+  @IsNumber()
+  heartRate?: number;
+
+  @IsOptional()
+  @IsNumber()
+  bloodPressureSystolic?: number;
+
+  @IsOptional()
+  @IsNumber()
+  bloodPressureDiastolic?: number;
+
+  @IsOptional()
+  @IsNumber()
+  temperature?: number;
+
+  @IsOptional()
+  @IsNumber()
+  steps?: number;
 }
 
 export class BulkTelemetryDto {
@@ -130,17 +155,37 @@ export class CreateVitalsDto {
   @ApiProperty({
     description: 'Type of vital sign',
     example: 'blood_pressure',
+    required: false,
   })
+  @IsOptional()
   @IsString()
   @MaxLength(100)
-  vitalType: string;
+  vitalType?: string;
+
+  @ApiProperty({
+    description: 'Alias for vitalType',
+    example: 'blood_pressure',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  type?: string;
 
   @ApiProperty({
     description: 'Vital sign reading',
     example: { systolic: 120, diastolic: 80 },
+    required: false,
   })
-  @IsObject()
-  reading: Record<string, any>;
+  @IsOptional()
+  reading?: any;
+
+  @ApiProperty({
+    description: 'Alias for reading',
+    example: '120/80',
+    required: false,
+  })
+  @IsOptional()
+  value?: any;
 
   @ApiProperty({
     description: 'Unit of measurement',
@@ -155,9 +200,11 @@ export class CreateVitalsDto {
   @ApiProperty({
     description: 'When the reading was recorded',
     example: '2024-01-01T12:00:00Z',
+    required: false,
   })
+  @IsOptional()
   @IsDateString()
-  recordedAt: string;
+  recordedAt?: string;
 
   @ApiProperty({
     description: 'How the reading was recorded',
@@ -211,9 +258,20 @@ export class CreateSOSDto {
   @ApiProperty({
     description: 'Alert description',
     example: 'Emergency button pressed by user',
+    required: false,
   })
+  @IsOptional()
   @IsString()
-  description: string;
+  description?: string;
+
+  @ApiProperty({
+    description: 'Alias for description',
+    example: 'Emergency button pressed',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  notes?: string;
 
   @ApiProperty({
     description: 'Latitude coordinate',

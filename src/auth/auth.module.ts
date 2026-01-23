@@ -15,6 +15,9 @@ import { EmailService } from '../common/services/email.service';
 import { CacheService } from '../common/services/cache.service';
 import { TokenBlacklistService } from '../common/services/token-blacklist.service';
 
+import { ApiKeyGuard } from '../common/guards/api-key.guard';
+import { DeviceAuthGuard } from '../common/guards/device-auth.guard';
+
 @Module({
   imports: [
     TypeOrmModule.forFeature([User, Device], 'auth'),
@@ -40,7 +43,9 @@ import { TokenBlacklistService } from '../common/services/token-blacklist.servic
     EmailService,
     CacheService,
     TokenBlacklistService,
+    ApiKeyGuard,
+    DeviceAuthGuard,
   ],
-  exports: [AuthService, JwtStrategy, FirebaseStrategy, PassportModule],
+  exports: [AuthService, JwtStrategy, FirebaseStrategy, PassportModule, ApiKeyGuard, DeviceAuthGuard],
 })
 export class AuthModule { }

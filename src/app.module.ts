@@ -30,6 +30,8 @@ import { NotificationModule } from './notification/notification.module';
 import { AuditLogModule } from './common/services/audit-log.module';
 import { ChatModule } from './chat/chat.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
+import { FirebaseAdminModule } from './common/services/firebase-admin.module';
+import { MonitoringModule } from './monitoring/monitoring.module';
 
 // Common interceptors
 import { AuditLogInterceptor } from './common/interceptors/audit-log.interceptor';
@@ -42,6 +44,7 @@ import { UserProfile } from './profile/entities/user-profile.entity';
 import { Medication } from './profile/entities/medication.entity';
 import { MedicationLog } from './profile/entities/medication-log.entity';
 import { DailyHealthMetric } from './profile/entities/daily-health-metric.entity';
+import { Appointment } from './profile/entities/appointment.entity';
 import { TelemetryData } from './device/entities/telemetry.entity';
 import { Vitals } from './device/entities/vitals.entity';
 import { SOSAlert } from './device/entities/sos-alert.entity';
@@ -129,7 +132,7 @@ import { Subscription } from './subscriptions/entities/subscription.entity';
         username: configService.get('database.profile.username'),
         password: configService.get('database.profile.password'),
         database: configService.get('database.profile.database'),
-        entities: [UserProfile, Medication, MedicationLog, DailyHealthMetric],
+        entities: [UserProfile, Medication, MedicationLog, DailyHealthMetric, Appointment],
         synchronize: configService.get('app.environment') === 'development', // Enable sync in dev for rapid iteration
         logging: configService.get('app.environment') === 'development',
         ssl: configService.get('app.environment') === 'production'
@@ -215,6 +218,8 @@ import { Subscription } from './subscriptions/entities/subscription.entity';
     AuditLogModule,
     ChatModule,
     SubscriptionsModule,
+    FirebaseAdminModule,
+    MonitoringModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

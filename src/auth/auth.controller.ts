@@ -24,6 +24,7 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { FirebaseAuthGuard } from '../common/guards/firebase-auth.guard';
 import { AuditLogInterceptor } from '../common/interceptors/audit-log.interceptor';
 import { UserRole } from '../common/enums/user-role.enum';
+import { DeviceAuthGuard } from '../common/guards/device-auth.guard';
 
 @ApiTags('Authentication')
 @Controller('v1/auth')
@@ -113,7 +114,7 @@ export class AuthController {
   }
 
   @Post('devices/register')
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(DeviceAuthGuard)
   @ApiBearerAuth()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Register a new device' })
@@ -124,7 +125,8 @@ export class AuthController {
     @CurrentUser() user,
     @Body() deviceDto: DeviceRegisterDto,
   ) {
-    const device = await this.authService.registerDevice(user.id, deviceDto);
+    const userId = user?.id || null;
+    const device = await this.authService.registerDevice(userId, deviceDto);
 
     return {
       message: 'Device registered successfully',
@@ -133,7 +135,7 @@ export class AuthController {
   }
 
   @Get('devices')
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard(['jwt', 'firebase']))
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get user devices' })
   @ApiResponse({ status: 200, description: 'Devices retrieved successfully' })
@@ -148,7 +150,7 @@ export class AuthController {
   }
 
   @Delete('devices/:deviceId')
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard(['jwt', 'firebase']))
   @ApiBearerAuth()
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Deactivate a device' })

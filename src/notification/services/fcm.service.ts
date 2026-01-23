@@ -23,40 +23,16 @@ export interface PushNotificationPayload {
 @Injectable()
 export class FCMService {
   private readonly logger = new Logger(FCMService.name);
-  private app: admin.app.App;
 
-  constructor(private readonly configService: ConfigService) {
-    this.initializeFirebase();
-  }
+  constructor(private readonly configService: ConfigService) { }
 
-  private initializeFirebase(): void {
-    try {
-      const serviceAccountPath = this.configService.get<string>('firebase.serviceAccountPath');
-      const projectId = this.configService.get<string>('firebase.projectId');
-
-      if (!serviceAccountPath || !projectId) {
-        this.logger.warn('Firebase credentials not configured. Push notifications will be disabled.');
-        return;
-      }
-
-      // Initialize Firebase Admin SDK
-      this.app = admin.initializeApp({
-        credential: admin.credential.cert(serviceAccountPath),
-        projectId: projectId,
-      });
-
-      this.logger.log('Firebase Admin SDK initialized successfully');
-    } catch (error) {
-      this.logger.error('Failed to initialize Firebase Admin SDK:', error);
-    }
-  }
 
   async sendPushNotification(
     token: string,
     payload: PushNotificationPayload,
     priority: string = 'normal',
   ): Promise<PushNotificationResult> {
-    if (!this.app) {
+    if (admin.apps.length === 0) {
       return {
         success: false,
         error: 'Firebase service not configured',
@@ -127,7 +103,7 @@ export class FCMService {
     payload: PushNotificationPayload,
     priority: string = 'normal',
   ): Promise<PushNotificationResult> {
-    if (!this.app) {
+    if (admin.apps.length === 0) {
       return {
         success: false,
         error: 'Firebase service not configured',
@@ -203,7 +179,7 @@ export class FCMService {
     payload: PushNotificationPayload,
     priority: string = 'normal',
   ): Promise<PushNotificationResult> {
-    if (!this.app) {
+    if (admin.apps.length === 0) {
       return {
         success: false,
         error: 'Firebase service not configured',
@@ -255,7 +231,7 @@ export class FCMService {
   }
 
   async subscribeToTopic(tokens: string[], topic: string): Promise<void> {
-    if (!this.app) {
+    if (admin.apps.length === 0) {
       throw new Error('Firebase service not configured');
     }
 
@@ -273,7 +249,7 @@ export class FCMService {
   }
 
   async unsubscribeFromTopic(tokens: string[], topic: string): Promise<void> {
-    if (!this.app) {
+    if (admin.apps.length === 0) {
       throw new Error('Firebase service not configured');
     }
 
@@ -291,7 +267,7 @@ export class FCMService {
   }
 
   async validateToken(token: string): Promise<boolean> {
-    if (!this.app) {
+    if (admin.apps.length === 0) {
       return false;
     }
 

@@ -170,7 +170,13 @@ export class AuthService {
     return this.userRepository.save(user);
   }
 
-  async registerDevice(userId: string, deviceDto: DeviceRegisterDto): Promise<Device> {
+  async registerDevice(userId: string | null, deviceDto: DeviceRegisterDto): Promise<Device> {
+    const finalUserId = userId || deviceDto.ownerId;
+
+    if (!finalUserId) {
+      throw new BadRequestException('User ID or ownerId is required');
+    }
+
     // Check if device already exists
     const existingDevice = await this.deviceRepository.findOne({
       where: { deviceId: deviceDto.deviceId },
@@ -182,7 +188,7 @@ export class AuthService {
 
     // Validate user exists
     const user = await this.userRepository.findOne({
-      where: { id: userId },
+      where: { id: finalUserId },
     });
 
     if (!user) {
@@ -192,9 +198,10 @@ export class AuthService {
     // Create device
     const device = this.deviceRepository.create({
       ...deviceDto,
-      userId,
-      type: deviceDto.type as DeviceType,
-      certificateFingerprint: crypto.randomBytes(32).toString('hex'),
+      userId: finalUserId,
+      name: deviceDto.name || `Device-${deviceDto.deviceId.slice(-4)}`,
+      type: (deviceDto.type || deviceDto.deviceType || 'wearable') as DeviceType,
+      certificateFingerprint: deviceDto.certificateFingerprint || crypto.randomBytes(32).toString('hex'),
     });
 
     return this.deviceRepository.save(device);
