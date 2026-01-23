@@ -14,6 +14,9 @@ import { Device } from './entities/device.entity';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto, DeviceRegisterDto } from './dto/login.dto';
 import { UserRole, DeviceType } from '../common/enums/user-role.enum';
+import { EmailService } from '../common/services/email.service';
+import { CacheService } from '../common/services/cache.service';
+import { TokenBlacklistService } from '../common/services/token-blacklist.service';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -25,6 +28,9 @@ export class AuthService {
     private readonly deviceRepository: Repository<Device>,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly emailService: EmailService,
+    private readonly cacheService: CacheService,
+    private readonly tokenBlacklistService: TokenBlacklistService,
   ) { }
 
   async register(registerDto: RegisterDto): Promise<{ user: Partial<User>; token: string }> {
@@ -48,6 +54,11 @@ export class AuthService {
     });
 
     const savedUser = await this.userRepository.save(user);
+
+    // Send welcome email (non-blocking)
+    this.emailService.sendWelcomeEmail(savedUser.email, savedUser.firstName).catch((err) => {
+      console.error('Failed to send welcome email:', err);
+    });
 
     // Generate JWT token
     const token = this.generateToken(savedUser);
@@ -114,9 +125,25 @@ export class AuthService {
   }
 
   async validateUserById(userId: string): Promise<User | null> {
-    return this.userRepository.findOne({
+    // Try to get from cache first
+    const cacheKey = this.cacheService.getUserCacheKey(userId);
+    const cachedUser = await this.cacheService.get<User>(cacheKey);
+
+    if (cachedUser) {
+      return cachedUser;
+    }
+
+    // If not in cache, get from database
+    const user = await this.userRepository.findOne({
       where: { id: userId },
     });
+
+    // Cache the user for 5 minutes
+    if (user) {
+      await this.cacheService.set(cacheKey, user, { ttl: 300 });
+    }
+
+    return user;
   }
 
   async validateUserByEmail(email: string): Promise<User | null> {
@@ -220,7 +247,10 @@ export class AuthService {
     return this.jwtService.sign(payload, { expiresIn } as any);
   }
 
-  async refreshToken(userId: string): Promise<string> {
+  /**
+   * Generate a JWT token for a user (public method for controllers)
+   */
+  async generateTokenForUser(userId: string): Promise<string> {
     const user = await this.validateUserById(userId);
 
     if (!user) {
@@ -228,6 +258,36 @@ export class AuthService {
     }
 
     return this.generateToken(user);
+  }
+
+  async refreshToken(userId: string, oldRefreshToken: string): Promise<{ accessToken: string; refreshToken: string }> {
+    // Validate the old refresh token
+    const isValid = await this.tokenBlacklistService.validateRefreshToken(userId, oldRefreshToken);
+
+    if (!isValid) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    const user = await this.validateUserById(userId);
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    // Generate new tokens
+    const accessToken = this.generateToken(user);
+    const newRefreshToken = crypto.randomBytes(32).toString('hex');
+
+    // Store new refresh token (7 days)
+    await this.tokenBlacklistService.storeRefreshToken(userId, newRefreshToken, 7 * 24 * 60 * 60);
+
+    // Revoke old refresh token
+    await this.tokenBlacklistService.revokeRefreshToken(userId);
+
+    return {
+      accessToken,
+      refreshToken: newRefreshToken,
+    };
   }
 
   async changePassword(userId: string, oldPassword: string, newPassword: string): Promise<void> {
@@ -247,6 +307,12 @@ export class AuthService {
 
     user.password = newPassword;
     await this.userRepository.save(user);
+
+    // Invalidate user cache
+    await this.cacheService.invalidateUserCache(userId);
+
+    // Revoke all refresh tokens (force re-login on all devices)
+    await this.tokenBlacklistService.revokeAllUserTokens(userId);
   }
 
   async requestPasswordReset(email: string): Promise<void> {
@@ -256,11 +322,13 @@ export class AuthService {
 
     if (user) {
       user.resetPasswordToken = crypto.randomBytes(32).toString('hex');
-      user.resetPasswordExpires = new Date(Date.now() + 3600000);
+      user.resetPasswordExpires = new Date(Date.now() + 3600000); // 1 hour
       await this.userRepository.save(user);
 
-      // TODO: Send password reset email
+      // Send password reset email
+      await this.emailService.sendPasswordResetEmail(email, user.resetPasswordToken);
     }
+    // Note: We don't throw an error if user not found to prevent email enumeration
   }
 
   async resetPassword(token: string, newPassword: string): Promise<void> {
@@ -275,7 +343,62 @@ export class AuthService {
     }
 
     user.password = newPassword;
-    user.resetPasswordToken = "null";
+    user.resetPasswordToken = null;
+    user.resetPasswordExpires = null;
     await this.userRepository.save(user);
+
+    // Invalidate user cache
+    await this.cacheService.invalidateUserCache(user.id);
+
+    // Revoke all refresh tokens (force re-login on all devices)
+    await this.tokenBlacklistService.revokeAllUserTokens(user.id);
+  }
+
+  /**
+   * Logout user - blacklist token and revoke refresh token
+   */
+  async logout(userId: string, token: string): Promise<void> {
+    // Get token expiration time
+    const expiresIn = this.configService.get<string>('jwt.expiresIn') || '24h';
+    const expiresInSeconds = this.parseExpiresIn(expiresIn);
+
+    // Blacklist the access token
+    await this.tokenBlacklistService.blacklistToken(token, expiresInSeconds);
+
+    // Revoke refresh token
+    await this.tokenBlacklistService.revokeRefreshToken(userId);
+
+    // Invalidate user cache
+    await this.cacheService.invalidateUserCache(userId);
+  }
+
+  /**
+   * Parse JWT expiresIn string to seconds
+   */
+  private parseExpiresIn(expiresIn: string | number): number {
+    if (typeof expiresIn === 'number') {
+      return expiresIn;
+    }
+
+    const match = expiresIn.match(/(\d+)([smhd])/);
+    if (!match) {
+      return 86400; // Default 24 hours
+    }
+
+    const value = parseInt(match[1], 10);
+    const unit = match[2];
+
+    switch (unit) {
+      case 's':
+        return value;
+      case 'm':
+        return value * 60;
+      case 'h':
+        return value * 60 * 60;
+      case 'd':
+        return value * 24 * 60 * 60;
+      default:
+        return 86400;
+    }
   }
 }

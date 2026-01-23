@@ -17,6 +17,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@ne
 import { ProfileService } from './profile.service';
 import { CreateProfileDto, UpdateProfileDto } from './dto/create-profile.dto';
 import { CreateMedicationDto, UpdateMedicationDto, LogMedicationDto } from './dto/medication.dto';
+import { UpdateHealthMetricDto } from './dto/update-health-metric.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -29,7 +30,7 @@ import { UserRole } from '../common/enums/user-role.enum';
 @UseInterceptors(AuditLogInterceptor)
 @ApiBearerAuth()
 export class ProfileController {
-  constructor(private readonly profileService: ProfileService) {}
+  constructor(private readonly profileService: ProfileService) { }
 
   // Profile Management
   @Post('profile')
@@ -49,7 +50,7 @@ export class ProfileController {
     }
 
     const profile = await this.profileService.createProfile(userId, createProfileDto);
-    
+
     return {
       message: 'Profile created successfully',
       data: { profile },
@@ -70,7 +71,7 @@ export class ProfileController {
     }
 
     const profile = await this.profileService.getProfile(userId);
-    
+
     return {
       message: 'Profile retrieved successfully',
       data: { profile },
@@ -91,7 +92,7 @@ export class ProfileController {
     }
 
     const profile = await this.profileService.updateProfile(userId, updateProfileDto);
-    
+
     return {
       message: 'Profile updated successfully',
       data: { profile },
@@ -106,7 +107,7 @@ export class ProfileController {
   @ApiResponse({ status: 404, description: 'Profile not found' })
   async deleteProfile(@Param('userId') userId: string) {
     await this.profileService.deleteProfile(userId);
-    
+
     return {
       message: 'Profile deleted successfully',
     };
@@ -128,7 +129,7 @@ export class ProfileController {
     }
 
     const medication = await this.profileService.createMedication(userId, createMedicationDto);
-    
+
     return {
       message: 'Medication added successfully',
       data: { medication },
@@ -149,7 +150,7 @@ export class ProfileController {
     }
 
     const medications = await this.profileService.getMedications(userId, includeInactive);
-    
+
     return {
       message: 'Medications retrieved successfully',
       data: { medications },
@@ -170,7 +171,7 @@ export class ProfileController {
     }
 
     const medication = await this.profileService.getMedication(userId, medicationId);
-    
+
     return {
       message: 'Medication retrieved successfully',
       data: { medication },
@@ -192,7 +193,7 @@ export class ProfileController {
     }
 
     const medication = await this.profileService.updateMedication(userId, medicationId, updateMedicationDto);
-    
+
     return {
       message: 'Medication updated successfully',
       data: { medication },
@@ -214,7 +215,7 @@ export class ProfileController {
     }
 
     await this.profileService.deleteMedication(userId, medicationId);
-    
+
     return {
       message: 'Medication deleted successfully',
     };
@@ -237,7 +238,7 @@ export class ProfileController {
     }
 
     const log = await this.profileService.logMedication(userId, medicationId, logMedicationDto);
-    
+
     return {
       message: 'Medication logged successfully',
       data: { log },
@@ -261,7 +262,7 @@ export class ProfileController {
     }
 
     const logs = await this.profileService.getMedicationLogs(userId, medicationId, startDate, endDate);
-    
+
     return {
       message: 'Medication logs retrieved successfully',
       data: { logs },
@@ -281,7 +282,7 @@ export class ProfileController {
     }
 
     const summary = await this.profileService.getHealthSummary(userId);
-    
+
     return {
       message: 'Health summary retrieved successfully',
       data: summary,
@@ -302,7 +303,7 @@ export class ProfileController {
     }
 
     const compliance = await this.profileService.getMedicationCompliance(userId, days);
-    
+
     return {
       message: 'Compliance report retrieved successfully',
       data: compliance,
@@ -321,10 +322,63 @@ export class ProfileController {
     }
 
     const reminders = await this.profileService.getMedicationReminders(userId);
-    
+
     return {
       message: 'Reminders retrieved successfully',
       data: { reminders },
+    };
+  }
+
+  // Health Metrics Endpoints
+  @Post('health/metrics')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Update daily health metric' })
+  @ApiResponse({ status: 200, description: 'Metric updated successfully' })
+  async updateHealthMetric(
+    @Param('userId') userId: string,
+    @Body() updateDto: UpdateHealthMetricDto,
+    @CurrentUser() currentUser,
+  ) {
+    if (userId !== currentUser.id && !currentUser.roles.includes(UserRole.CAREGIVER) && !currentUser.roles.includes(UserRole.ADMIN)) {
+      throw new Error('Unauthorized to update health metrics for this user');
+    }
+
+    const metric = await this.profileService.updateHealthMetric(userId, updateDto);
+
+    return {
+      message: 'Health metric updated successfully',
+      data: metric,
+    };
+  }
+
+  @Get('health/metrics')
+  @ApiOperation({ summary: 'Get daily health metrics' })
+  @ApiQuery({ name: 'date', required: false, type: String })
+  @ApiResponse({ status: 200, description: 'Metrics retrieved successfully' })
+  async getDailyMetrics(
+    @Param('userId') userId: string,
+    @Query('date') dateString: string,
+    @CurrentUser() currentUser,
+  ) {
+    if (userId !== currentUser.id && !currentUser.roles.includes(UserRole.CAREGIVER) && !currentUser.roles.includes(UserRole.ADMIN)) {
+      throw new Error('Unauthorized to view health metrics for this user');
+    }
+
+    const date = dateString ? new Date(dateString) : new Date();
+    const metrics = await this.profileService.getDailyMetrics(userId, date);
+
+    // Format for frontend
+    return {
+      message: 'Metrics retrieved successfully',
+      data: {
+        metrics: [
+          { label: "Steps Today", value: metrics.steps.toLocaleString(), icon: "walk", trend: metrics.steps > 5000 ? "up" : "down" },
+          { label: "Heart Rate", value: `${metrics.heartRate || 72} bpm`, icon: "heart", trend: "stable" },
+          { label: "Sleep Quality", value: `${metrics.sleepHours || 0} hrs`, icon: "moon", trend: (metrics.sleepHours || 0) >= 7 ? "up" : "down" },
+          { label: "Hydration", value: `${metrics.waterIntake || 0}/8 cups`, icon: "water", trend: (metrics.waterIntake || 0) >= 6 ? "up" : "down" },
+        ],
+        raw: metrics // Send raw data too just in case
+      }
     };
   }
 }

@@ -72,13 +72,13 @@ export class AuthController {
     // The FirebaseAuthGuard already validated the token and 
     // attached the local user record (or created one) to the request.
     // We return a local JWT token for subsequent API calls.
-    const result = await this.authService.refreshToken(user.id);
+    const token = await this.authService.generateTokenForUser(user.id);
 
     return {
       message: 'Firebase login successful',
       data: {
         user,
-        token: result,
+        token,
       },
     };
   }
@@ -90,12 +90,12 @@ export class AuthController {
   @ApiOperation({ summary: 'Refresh JWT token' })
   @ApiResponse({ status: 200, description: 'Token refreshed successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async refreshToken(@CurrentUser() user) {
-    const token = await this.authService.refreshToken(user.id);
+  async refreshToken(@CurrentUser() user, @Body() body: { refreshToken: string }) {
+    const tokens = await this.authService.refreshToken(user.id, body.refreshToken);
 
     return {
       message: 'Token refreshed successfully',
-      data: { token },
+      data: tokens,
     };
   }
 

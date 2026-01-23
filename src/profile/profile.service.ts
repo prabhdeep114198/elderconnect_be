@@ -11,6 +11,8 @@ import { Medication } from './entities/medication.entity';
 import { MedicationLog, MedicationLogStatus } from './entities/medication-log.entity';
 import { CreateProfileDto, UpdateProfileDto } from './dto/create-profile.dto';
 import { CreateMedicationDto, UpdateMedicationDto, LogMedicationDto } from './dto/medication.dto';
+import { DailyHealthMetric } from './entities/daily-health-metric.entity';
+import { UpdateHealthMetricDto } from './dto/update-health-metric.dto';
 
 @Injectable()
 export class ProfileService {
@@ -21,7 +23,9 @@ export class ProfileService {
     private readonly medicationRepository: Repository<Medication>,
     @InjectRepository(MedicationLog, 'profile')
     private readonly medicationLogRepository: Repository<MedicationLog>,
-  ) {}
+    @InjectRepository(DailyHealthMetric, 'profile')
+    private readonly healthMetricRepository: Repository<DailyHealthMetric>,
+  ) { }
 
   // Profile Management
   async createProfile(userId: string, createProfileDto: CreateProfileDto): Promise<UserProfile> {
@@ -303,7 +307,7 @@ export class ProfileService {
       }
     }
 
-    return reminders.sort((a, b) => 
+    return reminders.sort((a, b) =>
       (a.reminderTime || new Date()).getTime() - (b.reminderTime || new Date()).getTime()
     );
   }
@@ -330,5 +334,74 @@ export class ProfileService {
         onTimeRate: compliance.onTimeRate,
       },
     };
+  }
+
+  // Health Metrics
+  async updateHealthMetric(userId: string, updateDto: UpdateHealthMetricDto): Promise<DailyHealthMetric> {
+    const profile = await this.getProfile(userId);
+    const date = updateDto.timestamp ? new Date(updateDto.timestamp) : new Date();
+    date.setHours(0, 0, 0, 0); // Normalize to start of day
+
+    let metric = await this.healthMetricRepository.findOne({
+      where: {
+        userProfileId: profile.id,
+        date: date,
+      },
+    });
+
+    if (!metric) {
+      metric = this.healthMetricRepository.create({
+        userProfileId: profile.id,
+        date: date,
+        steps: 0,
+        waterIntake: 0,
+        heartRate: 0,
+        sleepHours: 0,
+      });
+    }
+
+    switch (updateDto.type) {
+      case 'steps':
+        metric.steps = updateDto.value;
+        break;
+      case 'heartRate':
+        metric.heartRate = updateDto.value;
+        break;
+      case 'sleep':
+        metric.sleepHours = updateDto.value;
+        break;
+      case 'water':
+        metric.waterIntake = updateDto.value;
+        break;
+    }
+
+    return this.healthMetricRepository.save(metric);
+  }
+
+  async getDailyMetrics(userId: string, date: Date = new Date()): Promise<DailyHealthMetric> {
+    const profile = await this.getProfile(userId);
+    const queryDate = new Date(date);
+    queryDate.setHours(0, 0, 0, 0);
+
+    const metric = await this.healthMetricRepository.findOne({
+      where: {
+        userProfileId: profile.id,
+        date: queryDate,
+      },
+    });
+
+    if (!metric) {
+      // Return empty/default metrics if none exist for today
+      return {
+        steps: 0,
+        heartRate: 72, // Default average
+        sleepHours: 0,
+        waterIntake: 0,
+        userProfileId: profile.id,
+        date: queryDate,
+      } as DailyHealthMetric;
+    }
+
+    return metric;
   }
 }

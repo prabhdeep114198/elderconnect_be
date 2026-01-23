@@ -3,7 +3,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
-import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { CacheModule } from '@nestjs/cache-manager';
+import { APP_GUARD, APP_INTERCEPTOR, APP_FILTER } from '@nestjs/core';
 import { ThrottlerGuard } from '@nestjs/throttler';
 
 // Configuration
@@ -18,6 +19,7 @@ import {
   n8nConfig
 } from './config/app.config';
 import { databaseConfig } from './config/database.config';
+import { validateEnvironment } from './config/env.validation';
 
 // Modules
 import { AuthModule } from './auth/auth.module';
@@ -27,9 +29,11 @@ import { MediaModule } from './media/media.module';
 import { NotificationModule } from './notification/notification.module';
 import { AuditLogModule } from './common/services/audit-log.module';
 import { ChatModule } from './chat/chat.module';
+import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 
 // Common interceptors
 import { AuditLogInterceptor } from './common/interceptors/audit-log.interceptor';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
 // Entities for different databases
 import { User } from './auth/entities/user.entity';
@@ -37,6 +41,7 @@ import { Device } from './auth/entities/device.entity';
 import { UserProfile } from './profile/entities/user-profile.entity';
 import { Medication } from './profile/entities/medication.entity';
 import { MedicationLog } from './profile/entities/medication-log.entity';
+import { DailyHealthMetric } from './profile/entities/daily-health-metric.entity';
 import { TelemetryData } from './device/entities/telemetry.entity';
 import { Vitals } from './device/entities/vitals.entity';
 import { SOSAlert } from './device/entities/sos-alert.entity';
@@ -44,10 +49,11 @@ import { MediaFile } from './media/entities/media-file.entity';
 import { Notification } from './notification/entities/notification.entity';
 import { NotificationTemplate } from './notification/entities/notification-template.entity';
 import { AuditLog } from './common/services/entities/audit-log.entity';
+import { Subscription } from './subscriptions/entities/subscription.entity';
 
 @Module({
   imports: [
-    // Configuration
+    // Configuration with validation
     ConfigModule.forRoot({
       isGlobal: true,
       load: [
@@ -62,6 +68,7 @@ import { AuditLog } from './common/services/entities/audit-log.entity';
         n8nConfig
       ],
       envFilePath: ['.env.local', '.env'],
+      validate: validateEnvironment,
     }),
 
     // Rate limiting
@@ -73,6 +80,20 @@ import { AuditLog } from './common/services/entities/audit-log.entity';
 
     // Scheduling
     ScheduleModule.forRoot(),
+
+    // Redis Cache
+    CacheModule.registerAsync({
+      isGlobal: true,
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        store: require('cache-manager-ioredis-yet'),
+        host: configService.get('REDIS_HOST'),
+        port: configService.get('REDIS_PORT'),
+        password: configService.get('REDIS_PASSWORD') || undefined,
+        ttl: 300, // Default TTL: 5 minutes
+      }),
+      inject: [ConfigService],
+    }),
 
     // Database connections
     // Auth Database
@@ -86,11 +107,11 @@ import { AuditLog } from './common/services/entities/audit-log.entity';
         username: configService.get('database.auth.username'),
         password: configService.get('database.auth.password'),
         database: configService.get('database.auth.database'),
-        entities: [User, Device],
-        synchronize: configService.get('app.environment') === 'development',
+        entities: [User, Device, Subscription],
+        synchronize: false, // NEVER use synchronize in production - use migrations
         logging: configService.get('app.environment') === 'development',
         ssl: configService.get('app.environment') === 'production'
-          ? { rejectUnauthorized: false }
+          ? { rejectUnauthorized: true } // Proper SSL validation in production
           : false,
         extra: { max: 20, idleTimeoutMillis: 30000, connectionTimeoutMillis: 2000 },
       }),
@@ -108,11 +129,11 @@ import { AuditLog } from './common/services/entities/audit-log.entity';
         username: configService.get('database.profile.username'),
         password: configService.get('database.profile.password'),
         database: configService.get('database.profile.database'),
-        entities: [UserProfile, Medication, MedicationLog],
-        synchronize: configService.get('app.environment') === 'development',
+        entities: [UserProfile, Medication, MedicationLog, DailyHealthMetric],
+        synchronize: configService.get('app.environment') === 'development', // Enable sync in dev for rapid iteration
         logging: configService.get('app.environment') === 'development',
         ssl: configService.get('app.environment') === 'production'
-          ? { rejectUnauthorized: false }
+          ? { rejectUnauthorized: true } // Proper SSL validation in production
           : false,
         extra: { max: 20, idleTimeoutMillis: 30000, connectionTimeoutMillis: 2000 },
       }),
@@ -131,10 +152,10 @@ import { AuditLog } from './common/services/entities/audit-log.entity';
         password: configService.get('database.vitals.password'),
         database: configService.get('database.vitals.database'),
         entities: [TelemetryData, Vitals, SOSAlert],
-        synchronize: configService.get('app.environment') === 'development',
+        synchronize: false, // NEVER use synchronize in production - use migrations
         logging: configService.get('app.environment') === 'development',
         ssl: configService.get('app.environment') === 'production'
-          ? { rejectUnauthorized: false }
+          ? { rejectUnauthorized: true } // Proper SSL validation in production
           : false,
         extra: { max: 30, idleTimeoutMillis: 30000, connectionTimeoutMillis: 2000 },
       }),
@@ -153,10 +174,10 @@ import { AuditLog } from './common/services/entities/audit-log.entity';
         password: configService.get('database.media.password'),
         database: configService.get('database.media.database'),
         entities: [MediaFile],
-        synchronize: configService.get('app.environment') === 'development',
+        synchronize: false, // NEVER use synchronize in production - use migrations
         logging: configService.get('app.environment') === 'development',
         ssl: configService.get('app.environment') === 'production'
-          ? { rejectUnauthorized: false }
+          ? { rejectUnauthorized: true } // Proper SSL validation in production
           : false,
         extra: { max: 15, idleTimeoutMillis: 30000, connectionTimeoutMillis: 2000 },
       }),
@@ -175,10 +196,10 @@ import { AuditLog } from './common/services/entities/audit-log.entity';
         password: configService.get('database.audit.password'),
         database: configService.get('database.audit.database'),
         entities: [AuditLog, Notification, NotificationTemplate],
-        synchronize: configService.get('app.environment') === 'development',
+        synchronize: false, // NEVER use synchronize in production - use migrations
         logging: configService.get('app.environment') === 'development',
         ssl: configService.get('app.environment') === 'production'
-          ? { rejectUnauthorized: false }
+          ? { rejectUnauthorized: true } // Proper SSL validation in production
           : false,
         extra: { max: 25, idleTimeoutMillis: 30000, connectionTimeoutMillis: 2000 },
       }),
@@ -193,8 +214,10 @@ import { AuditLog } from './common/services/entities/audit-log.entity';
     NotificationModule,
     AuditLogModule,
     ChatModule,
+    SubscriptionsModule,
   ],
   providers: [
+    { provide: APP_FILTER, useClass: AllExceptionsFilter },
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_INTERCEPTOR, useClass: AuditLogInterceptor },
   ],

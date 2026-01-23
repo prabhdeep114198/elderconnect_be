@@ -3,6 +3,11 @@ import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ChatRequestDto, ChatResponseDto, UserContext, N8nPayload, ContextScores, VitalRecord } from './dto/chat.dto';
 import { randomUUID } from 'crypto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { User } from '../auth/entities/user.entity';
+import { UserProfile } from '../profile/entities/user-profile.entity';
+import { Vitals } from '../device/entities/vitals.entity';
 
 @Injectable()
 export class ChatService {
@@ -10,7 +15,15 @@ export class ChatService {
     private readonly n8nWebhookUrl: string;
     private readonly n8nApiKey: string;
 
-    constructor(private readonly configService: ConfigService) {
+    constructor(
+        private readonly configService: ConfigService,
+        @InjectRepository(User, 'auth')
+        private readonly userRepository: Repository<User>,
+        @InjectRepository(UserProfile, 'profile')
+        private readonly userProfileRepository: Repository<UserProfile>,
+        @InjectRepository(Vitals, 'vitals')
+        private readonly vitalsRepository: Repository<Vitals>,
+    ) {
         this.n8nWebhookUrl = this.configService.get<string>('n8n.webhookUrl') || '';
         this.n8nApiKey = this.configService.get<string>('n8n.apiKey') || '';
 
@@ -24,7 +37,7 @@ export class ChatService {
         try {
             this.logger.log(`Processing chat message for user ${userId}`);
 
-            const fullContext = await this.mockLoadUserContext(userId);
+            const fullContext = await this.loadUserContext(userId);
             const safeContext = this.summarizeContext(fullContext);
 
             const payload: N8nPayload = {
@@ -74,34 +87,81 @@ export class ChatService {
 
 
 
-    private async mockLoadUserContext(userId: string): Promise<any> {
-        await new Promise(resolve => setTimeout(resolve, 50));
+    private async loadUserContext(userId: string): Promise<any> {
+        // Fetch User basic info
+        const user = await this.userRepository.findOne({ where: { id: userId } });
+        if (!user) {
+            this.logger.warn(`User ${userId} not found when loading context`);
+            throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+        }
+
+        // Fetch User Profile for medical info
+        const profile = await this.userProfileRepository.findOne({ where: { userId } });
+
+        // Fetch recent vitals (last 10 readings)
+        const recentVitals = await this.vitalsRepository.find({
+            where: { userId },
+            order: { recordedAt: 'DESC' },
+            take: 10
+        });
+
+        // Map Vitals to simplified format
+        const vitals = recentVitals.map(v => ({
+            type: this.formatVitalType(v.vitalType),
+            value: this.extractVitalValue(v),
+            unit: v.unit || '',
+            timestamp: v.recordedAt.toISOString()
+        }));
+
+        // Default metrics if not available (implement real metrics later)
+        const metrics = {
+            physicalScore: 85, // Placeholder
+            mentalScore: 72,   // Placeholder
+            sleepScore: 65,    // Placeholder
+            socialScore: 90,   // Placeholder
+            dietScore: 80,     // Placeholder
+            exerciseScore: 40  // Placeholder
+        };
+
         return {
             userId,
-            name: "Elder Smith",
-            // Sensitive data that should NOT be forwarded raw if not needed
-            diaryEntries: [
-                "I felt a bit dizzy this morning.",
-                "Had a good lunch with my grandson."
-            ],
-            // Health metrics
-            metrics: {
-                physicalScore: 85,
-                mentalScore: 72,
-                sleepScore: 65,
-                socialScore: 90,
-                dietScore: 80,
-                exerciseScore: 40
-            },
-            lastMood: "content",
-            vitals: [
-                { type: "Heart Rate", value: 78, unit: "bpm", timestamp: new Date().toISOString() },
-                { type: "Blood Pressure", value: 120, unit: "mmHg", timestamp: new Date().toISOString() }, // Simplified
-                { type: "SpO2", value: 98, unit: "%", timestamp: new Date().toISOString() }
-            ],
-            conditions: ["Hypertension"], // Potentially sensitive
-            emergencyContact: "+15550199" // PII
+            name: `${user.firstName} ${user.lastName}`,
+            // Diary/Journal not implemented yet
+            diaryEntries: [],
+            // Metrics (scores) not implemented yet
+            metrics,
+            lastMood: "neutral", // Placeholder
+            vitals,
+            conditions: profile?.medicalConditions || [],
+            emergencyContact: profile?.emergencyContactPhone || ""
         };
+    }
+
+    private formatVitalType(type: string): string {
+        return type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+    }
+
+    private extractVitalValue(vital: Vitals): number | string {
+        switch (vital.vitalType) {
+            case 'blood_pressure':
+                const bp = vital.bloodPressureReading;
+                return bp ? `${bp.systolic}/${bp.diastolic}` : 0;
+            case 'heart_rate':
+                return vital.heartRate || 0;
+            case 'temperature':
+                return vital.temperature || 0;
+            case 'weight':
+                return vital.weight || 0;
+            case 'blood_sugar':
+                return vital.bloodSugar || 0;
+            case 'oxygen_saturation':
+                return vital.oxygenSaturation || 0;
+            default:
+                // Try to find a numeric value in reading
+                const reading = vital.reading || {};
+                const firstValue = Object.values(reading).find(v => typeof v === 'number');
+                return (firstValue as number) || 0;
+        }
     }
 
     /**

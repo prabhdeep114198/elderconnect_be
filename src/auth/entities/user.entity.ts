@@ -62,10 +62,10 @@ export class User {
 
   @Column({ type: 'varchar', length: 255, nullable: true })
   @Exclude()
-  resetPasswordToken: string;
+  resetPasswordToken: string | null;
 
   @Column({ type: 'timestamp', nullable: true })
-  resetPasswordExpires: Date;
+  resetPasswordExpires: Date | null;
 
   @Column({ type: 'timestamp', nullable: true })
   lastLoginAt: Date;
@@ -84,6 +84,12 @@ export class User {
 
   @CreateDateColumn()
   createdAt: Date;
+
+  @Column({ type: 'boolean', default: false })
+  isSubscribed: boolean;
+
+  @Column({ type: 'timestamp', nullable: true })
+  subscriptionExpiresAt: Date;
 
   @UpdateDateColumn()
   updatedAt: Date;
@@ -110,7 +116,7 @@ export class User {
 
   incrementLoginAttempts(): void {
     this.loginAttempts += 1;
-    
+
     // Lock account after 5 failed attempts for 30 minutes
     if (this.loginAttempts >= 5) {
       this.lockedUntil = new Date(Date.now() + 30 * 60 * 1000);

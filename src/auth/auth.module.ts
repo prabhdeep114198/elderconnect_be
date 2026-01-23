@@ -11,6 +11,9 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { LocalStrategy } from './strategies/local.strategy';
 import { FirebaseStrategy } from './strategies/firebase.strategy';
 import { AuditLogModule } from '../common/services/audit-log.module';
+import { EmailService } from '../common/services/email.service';
+import { CacheService } from '../common/services/cache.service';
+import { TokenBlacklistService } from '../common/services/token-blacklist.service';
 
 @Module({
   imports: [
@@ -29,7 +32,15 @@ import { AuditLogModule } from '../common/services/audit-log.module';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, LocalStrategy, FirebaseStrategy],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    LocalStrategy,
+    FirebaseStrategy,
+    EmailService,
+    CacheService,
+    TokenBlacklistService,
+  ],
   exports: [AuthService, JwtStrategy, FirebaseStrategy, PassportModule],
 })
 export class AuthModule { }
