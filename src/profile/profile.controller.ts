@@ -479,4 +479,56 @@ export class ProfileController {
       message: 'Appointment deleted successfully',
     };
   }
+
+  // Social Events
+  @Post('events')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Create a social gathering' })
+  async createSocialEvent(
+    @Param('userId') userId: string,
+    @Body() data: any,
+    @CurrentUser() currentUser,
+  ) {
+    if (userId !== currentUser.id && !currentUser.roles.includes(UserRole.ADMIN)) {
+      throw new Error('Unauthorized to host community events');
+    }
+
+    const event = await this.profileService.createSocialEvent(userId, data);
+
+    return {
+      message: 'Social event hosted successfully',
+      data: { event },
+    };
+  }
+
+  @Get('events')
+  @ApiOperation({ summary: 'Get all social gatherings' })
+  async getSocialEvents() {
+    const events = await this.profileService.getSocialEvents();
+
+    return {
+      message: 'Social events retrieved successfully',
+      data: { events },
+    };
+  }
+
+  @Post('events/:eventId/join')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Join a social gathering' })
+  async joinSocialEvent(
+    @Param('userId') userId: string,
+    @Param('eventId') eventId: string,
+    @CurrentUser() currentUser,
+  ) {
+    if (userId !== currentUser.id) {
+      throw new Error('Unauthorized to join event as another user');
+    }
+
+    const event = await this.profileService.joinSocialEvent(userId, eventId);
+
+    return {
+      message: 'Joined social event successfully',
+      data: { event },
+    };
+  }
 }

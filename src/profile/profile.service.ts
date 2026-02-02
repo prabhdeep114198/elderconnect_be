@@ -14,6 +14,7 @@ import { CreateMedicationDto, UpdateMedicationDto, LogMedicationDto } from './dt
 import { DailyHealthMetric } from './entities/daily-health-metric.entity';
 import { Appointment } from './entities/appointment.entity';
 import { CreateAppointmentDto, UpdateAppointmentDto } from './dto/appointment.dto';
+import { SocialEvent } from './entities/social-event.entity';
 import { UpdateHealthMetricDto } from './dto/update-health-metric.dto';
 
 @Injectable()
@@ -29,6 +30,8 @@ export class ProfileService {
     private readonly healthMetricRepository: Repository<DailyHealthMetric>,
     @InjectRepository(Appointment, 'profile')
     private readonly appointmentRepository: Repository<Appointment>,
+    @InjectRepository(SocialEvent, 'profile')
+    private readonly socialEventRepository: Repository<SocialEvent>,
   ) { }
 
   // Profile Management
@@ -492,5 +495,51 @@ export class ProfileService {
   async deleteAppointment(userId: string, appointmentId: string): Promise<void> {
     const appointment = await this.getAppointment(userId, appointmentId);
     await this.appointmentRepository.remove(appointment);
+  }
+
+  // Social Event Management
+  async createSocialEvent(userId: string, data: any): Promise<SocialEvent> {
+    const profile = await this.getProfile(userId);
+
+    const event = this.socialEventRepository.create({
+      hostId: profile.id,
+      title: data.title,
+      description: data.description,
+      location: data.location,
+      scheduledAt: new Date(data.scheduledAt),
+      category: data.category || 'social',
+    });
+
+    return this.socialEventRepository.save(event);
+  }
+
+  async getSocialEvents(): Promise<SocialEvent[]> {
+    return this.socialEventRepository.find({
+      order: { scheduledAt: 'ASC' },
+      relations: ['host', 'attendees'],
+    });
+  }
+
+  async joinSocialEvent(userId: string, eventId: string): Promise<SocialEvent> {
+    const profile = await this.getProfile(userId);
+    const event = await this.socialEventRepository.findOne({
+      where: { id: eventId },
+      relations: ['attendees'],
+    });
+
+    if (!event) {
+      throw new NotFoundException('Event not found');
+    }
+
+    if (!event.attendees) {
+      event.attendees = [];
+    }
+
+    const alreadyJoined = event.attendees.some(a => a.id === profile.id);
+    if (!alreadyJoined) {
+      event.attendees.push(profile);
+    }
+
+    return this.socialEventRepository.save(event);
   }
 }

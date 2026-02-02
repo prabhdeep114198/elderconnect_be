@@ -89,14 +89,21 @@ export class AuditLogInterceptor implements NestInterceptor {
   }
 
   private sanitizeBody(body: any): any {
-    if (!body) return body;
+    if (!body || typeof body !== 'object') return body;
 
     const sanitized = { ...body };
-    const sensitiveFields = ['password', 'token', 'secret', 'key'];
+    const sensitiveFields = ['password', 'token', 'secret', 'key', 'apiKey'];
 
-    sensitiveFields.forEach(field => {
-      if (sanitized[field]) {
-        sanitized[field] = '[REDACTED]';
+    Object.keys(sanitized).forEach(key => {
+      // Redact sensitive fields
+      if (sensitiveFields.some(field => key.toLowerCase().includes(field))) {
+        sanitized[key] = '[REDACTED]';
+        return;
+      }
+
+      // Truncate large data (like base64 strings)
+      if (typeof sanitized[key] === 'string' && sanitized[key].length > 1000) {
+        sanitized[key] = sanitized[key].substring(0, 1000) + '... [TRUNCATED]';
       }
     });
 
