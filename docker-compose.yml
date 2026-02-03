@@ -168,6 +168,19 @@ services:
     volumes:
       - ./logs:/app/logs
 
+  neo4j:
+    image: neo4j:5
+    container_name: elder-knowledge-db
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    environment:
+      - NEO4J_AUTH=neo4j/password
+    volumes:
+      - neo4j_data:/data
+    networks:
+      - elder-network
+
 volumes:
   postgres_auth_data:
   postgres_profile_data:
@@ -176,6 +189,7 @@ volumes:
   postgres_audit_data:
   redis_data:
   grafana_data:
+  neo4j_data:
 
 networks:
   elder-network:

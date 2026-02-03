@@ -63,6 +63,9 @@ export class Appointment {
     @Column({ type: 'integer', default: 60 })
     reminderMinutesBefore: number;
 
+    @Column({ type: 'boolean', default: false })
+    isTelemedicine: boolean;
+
     @ManyToOne(() => UserProfile, { onDelete: 'CASCADE' })
     @JoinColumn({ name: 'userProfileId' })
     userProfile: UserProfile;

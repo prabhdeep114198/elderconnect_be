@@ -18,6 +18,7 @@ import { ProfileService } from './profile.service';
 import { CreateProfileDto, UpdateProfileDto } from './dto/create-profile.dto';
 import { CreateMedicationDto, UpdateMedicationDto, LogMedicationDto } from './dto/medication.dto';
 import { CreateAppointmentDto, UpdateAppointmentDto } from './dto/appointment.dto';
+import { CreateSocialEventDto } from './dto/social-event.dto';
 import { UpdateHealthMetricDto } from './dto/update-health-metric.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -484,9 +485,10 @@ export class ProfileController {
   @Post('events')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create a social gathering' })
+  @ApiResponse({ status: 201, description: 'Social event created successfully' })
   async createSocialEvent(
     @Param('userId') userId: string,
-    @Body() data: any,
+    @Body() data: CreateSocialEventDto,
     @CurrentUser() currentUser,
   ) {
     if (userId !== currentUser.id && !currentUser.roles.includes(UserRole.ADMIN)) {
@@ -529,6 +531,45 @@ export class ProfileController {
     return {
       message: 'Joined social event successfully',
       data: { event },
+    };
+  }
+
+  // Gamification (Streaks & Achievements)
+  @Get('gamification/streaks')
+  @ApiOperation({ summary: 'Get user health streaks' })
+  @ApiResponse({ status: 200, description: 'Streaks retrieved successfully' })
+  async getStreaks(
+    @Param('userId') userId: string,
+    @CurrentUser() currentUser,
+  ) {
+    if (userId !== currentUser.id && !currentUser.roles.includes(UserRole.CAREGIVER) && !currentUser.roles.includes(UserRole.ADMIN)) {
+      throw new Error('Unauthorized to view streaks for this user');
+    }
+
+    const streaks = await this.profileService.getStreaks(userId);
+
+    return {
+      message: 'Streaks retrieved successfully',
+      data: { streaks },
+    };
+  }
+
+  @Get('gamification/achievements')
+  @ApiOperation({ summary: 'Get user achievements' })
+  @ApiResponse({ status: 200, description: 'Achievements retrieved successfully' })
+  async getAchievements(
+    @Param('userId') userId: string,
+    @CurrentUser() currentUser,
+  ) {
+    if (userId !== currentUser.id && !currentUser.roles.includes(UserRole.CAREGIVER) && !currentUser.roles.includes(UserRole.ADMIN)) {
+      throw new Error('Unauthorized to view achievements for this user');
+    }
+
+    const achievements = await this.profileService.getAchievements(userId);
+
+    return {
+      message: 'Achievements retrieved successfully',
+      data: { achievements },
     };
   }
 }

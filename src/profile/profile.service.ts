@@ -5,7 +5,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between } from 'typeorm';
+import { Repository, Between, MoreThanOrEqual } from 'typeorm';
 import { UserProfile } from './entities/user-profile.entity';
 import { Medication } from './entities/medication.entity';
 import { MedicationLog, MedicationLogStatus } from './entities/medication-log.entity';
@@ -16,6 +16,8 @@ import { Appointment } from './entities/appointment.entity';
 import { CreateAppointmentDto, UpdateAppointmentDto } from './dto/appointment.dto';
 import { SocialEvent } from './entities/social-event.entity';
 import { UpdateHealthMetricDto } from './dto/update-health-metric.dto';
+import { UserStreak, StreakType } from './entities/user-streak.entity';
+import { UserAchievement } from './entities/user-achievement.entity';
 
 @Injectable()
 export class ProfileService {
@@ -32,6 +34,10 @@ export class ProfileService {
     private readonly appointmentRepository: Repository<Appointment>,
     @InjectRepository(SocialEvent, 'profile')
     private readonly socialEventRepository: Repository<SocialEvent>,
+    @InjectRepository(UserStreak, 'profile')
+    private readonly streakRepository: Repository<UserStreak>,
+    @InjectRepository(UserAchievement, 'profile')
+    private readonly achievementRepository: Repository<UserAchievement>,
   ) { }
 
   // Profile Management
@@ -202,7 +208,14 @@ export class ProfileService {
       await this.medicationRepository.save(medication);
     }
 
-    return this.medicationLogRepository.save(log);
+    const savedLog = await this.medicationLogRepository.save(log);
+
+    // Update streaks if medication was taken
+    if (logMedicationDto.status === MedicationLogStatus.TAKEN) {
+      await this.updateStreak(userId, StreakType.MEDICATION);
+    }
+
+    return savedLog;
   }
 
   async getMedicationLogs(
@@ -401,7 +414,106 @@ export class ProfileService {
         break;
     }
 
+    // If steps are updated, update the steps streak
+    if (updateDto.type === 'steps' && updateDto.value > 0) {
+      await this.updateStreak(userId, StreakType.STEPS);
+    }
+
     return this.healthMetricRepository.save(metric);
+  }
+
+  // --- GAMIFICATION LOGIC ---
+
+  async getStreaks(userId: string) {
+    const streaks = await this.streakRepository.find({ where: { userId } });
+    // Default values if not found
+    const defaultStreaks = {
+      medication: streaks.find(s => s.type === StreakType.MEDICATION)?.count || 0,
+      steps: streaks.find(s => s.type === StreakType.STEPS)?.count || 0,
+      health: streaks.find(s => s.type === StreakType.HEALTH)?.count || 0,
+    };
+    return defaultStreaks;
+  }
+
+  async getAchievements(userId: string) {
+    return this.achievementRepository.find({
+      where: { userId },
+      order: { earnedAt: 'DESC' }
+    });
+  }
+
+  private async updateStreak(userId: string, type: StreakType) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    let streak = await this.streakRepository.findOne({ where: { userId, type } });
+
+    if (!streak) {
+      streak = this.streakRepository.create({
+        userId,
+        type,
+        count: 1,
+        lastActiveDate: today,
+      });
+    } else {
+      const lastDate = new Date(streak.lastActiveDate);
+      lastDate.setHours(0, 0, 0, 0);
+
+      const diffDays = Math.floor((today.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
+
+      if (diffDays === 1) {
+        // Increment streak
+        streak.count += 1;
+        streak.lastActiveDate = today;
+      } else if (diffDays > 1) {
+        // Streak broken
+        streak.count = 1;
+        streak.lastActiveDate = today;
+      }
+      // If diffDays === 0, already updated today
+    }
+
+    await this.streakRepository.save(streak);
+    await this.checkAchievements(userId, streak);
+  }
+
+  private async checkAchievements(userId: string, streak: UserStreak) {
+    // Basic achievement logic
+    const achievements: Array<{ id: string, name: string, icon: string, color: string }> = [];
+
+    if (streak.type === StreakType.MEDICATION && streak.count === 7) {
+      achievements.push({
+        id: 'med_7_days',
+        name: 'Weekly Warrior',
+        icon: 'medical',
+        color: '#9C27B0'
+      });
+    }
+
+    if (streak.type === StreakType.STEPS && streak.count === 3) {
+      achievements.push({
+        id: 'steps_3_days',
+        name: 'Stepping Up',
+        icon: 'walk',
+        color: '#4CAF50'
+      });
+    }
+
+    for (const ach of achievements) {
+      const existing = await this.achievementRepository.findOne({
+        where: { userId, achievementId: ach.id }
+      });
+
+      if (!existing) {
+        await this.achievementRepository.save(this.achievementRepository.create({
+          userId,
+          achievementId: ach.id,
+          name: ach.name,
+          icon: ach.icon,
+          color: ach.color
+        }));
+      }
+    }
   }
 
   async getDailyMetrics(userId: string, date: Date = new Date()): Promise<DailyHealthMetric> {
@@ -501,13 +613,37 @@ export class ProfileService {
   async createSocialEvent(userId: string, data: any): Promise<SocialEvent> {
     const profile = await this.getProfile(userId);
 
+    // Support flexible mapping for voice assistants or external webhooks
+    const title = data.title || data.name || "New Event";
+    const description = data.description || data.notes || "No description provided.";
+    const location = data.location || "Community Center";
+    const category = data.type || data.category || "social";
+
+    // Parse date and time from various formats
+    let scheduledAt: Date;
+    if (data.scheduledAt) {
+      scheduledAt = new Date(data.scheduledAt);
+    } else if (data.date) {
+      const timeStr = data.time || "10:00 AM";
+      scheduledAt = new Date(`${data.date} ${timeStr}`);
+    } else {
+      scheduledAt = new Date();
+      scheduledAt.setDate(scheduledAt.getDate() + 1); // Default to tomorrow
+    }
+
+    // fallback if parsing failed
+    if (isNaN(scheduledAt.getTime())) {
+      scheduledAt = new Date();
+      scheduledAt.setDate(scheduledAt.getDate() + 1);
+    }
+
     const event = this.socialEventRepository.create({
       hostId: profile.id,
-      title: data.title,
-      description: data.description,
-      location: data.location,
-      scheduledAt: new Date(data.scheduledAt),
-      category: data.category || 'social',
+      title,
+      description,
+      location,
+      scheduledAt,
+      category,
     });
 
     return this.socialEventRepository.save(event);
@@ -515,6 +651,9 @@ export class ProfileService {
 
   async getSocialEvents(): Promise<SocialEvent[]> {
     return this.socialEventRepository.find({
+      where: {
+        scheduledAt: MoreThanOrEqual(new Date()),
+      },
       order: { scheduledAt: 'ASC' },
       relations: ['host', 'attendees'],
     });

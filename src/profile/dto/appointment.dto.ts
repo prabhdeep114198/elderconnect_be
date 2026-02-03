@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsOptional, IsDateString, IsInt, IsEnum, MaxLength } from 'class-validator';
+import { IsString, IsOptional, IsDateString, IsInt, IsEnum, IsBoolean, MaxLength } from 'class-validator';
 import { AppointmentStatus } from '../entities/appointment.entity';
 
 export class CreateAppointmentDto {
@@ -66,6 +66,11 @@ export class CreateAppointmentDto {
     @IsOptional()
     @IsInt()
     reminderMinutesBefore?: number;
+
+    @ApiProperty({ example: false, description: 'Whether this is a video/telemedicine appointment' })
+    @IsOptional()
+    @IsBoolean()
+    isTelemedicine?: boolean;
 }
 
 export class UpdateAppointmentDto extends CreateAppointmentDto {
