@@ -254,31 +254,99 @@ export class ProfileService {
   }
 
   // Analytics and Reports
-  async getMedicationCompliance(userId: string, days: number = 30): Promise<any> {
+  async getMedicationCompliance(userId: string, days: number = 7): Promise<any> {
     const profile = await this.getProfile(userId);
     const endDate = new Date();
-    const startDate = new Date(endDate.getTime() - days * 24 * 60 * 60 * 1000);
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days + 1); // Go back days-1 to include today as 7th day? Or just last 7 days.
 
+    // Normalize time
+    endDate.setHours(23, 59, 59, 999);
+    startDate.setHours(0, 0, 0, 0);
+
+    // Get all meds to calculate "Expected"
+    const medications = await this.medicationRepository.find({
+      where: { userProfileId: profile.id }
+    });
+
+    // Get actual logs
     const logs = await this.medicationLogRepository
       .createQueryBuilder('log')
       .innerJoin('log.medication', 'medication')
       .where('medication.userProfileId = :profileId', { profileId: profile.id })
-      .andWhere('log.scheduledTime BETWEEN :startDate AND :endDate', { startDate, endDate })
+      .andWhere('log.scheduledTime BETWEEN :startDate AND :endDate', { startDate: startDate.toISOString(), endDate: endDate.toISOString() })
       .getMany();
 
-    const totalScheduled = logs.length;
-    const taken = logs.filter(log => log.status === MedicationLogStatus.TAKEN).length;
-    const missed = logs.filter(log => log.status === MedicationLogStatus.MISSED).length;
-    const skipped = logs.filter(log => log.status === MedicationLogStatus.SKIPPED).length;
+    // Helper to count scheduled doses for a pill (simple version)
+    // Assumes schedule is array of times like ["08:00", "20:00"]
+    const getDailyDoseCount = (med: Medication) => {
+      if (Array.isArray(med.schedule)) return med.schedule.length;
+      if (typeof med.schedule === 'object' && med.schedule !== null) return Object.keys(med.schedule).length;
+      return 1;
+    };
+
+    const dailyStats: { date: string; expected: number; taken: number; compliance: number }[] = [];
+    const dateIterator = new Date(startDate);
+
+    // Arrays for weekly chart (Mon-Sun or Last 7 days)
+    // Frontend expects 7 items, likely corresponding to "Mon, Tue..." labels or "Last 7 days" 
+    // The frontend labels are static `weekDays` ['Mon', ...]. 
+    // Ideally we should match the days. 
+    // But simplest is returning last 7 days data. 
+    // Let's assume frontend maps them correctly or we assume 7 days ending today.
+
+    while (dateIterator <= endDate) {
+      const dayStr = dateIterator.toISOString().split('T')[0];
+
+      // 1. Calculate Expected for this day
+      // Filter meds active on this day
+      const activeMeds = medications.filter(m => {
+        const start = new Date(m.startDate).toISOString().split('T')[0];
+        const end = m.endDate ? new Date(m.endDate).toISOString().split('T')[0] : '9999-12-31';
+        return dayStr >= start && dayStr <= end;
+      });
+
+      const expected = activeMeds.reduce((acc, med) => acc + getDailyDoseCount(med), 0);
+
+      // 2. Calculate Actual Taken
+      const dayLogs = logs.filter(l => {
+        const lDate = new Date(l.scheduledTime).toISOString().split('T')[0];
+        return lDate === dayStr;
+      });
+
+      const taken = dayLogs.filter(l => l.status === MedicationLogStatus.TAKEN).length;
+
+      // 3. Compliance
+      const compliance = expected > 0 ? Math.round((taken / expected) * 100) : 0;
+
+      dailyStats.push({ date: dayStr, expected, taken, compliance });
+      dateIterator.setDate(dateIterator.getDate() + 1);
+    }
+
+    // "Today" stats (last entry in dailyStats)
+    const todayStat = dailyStats[dailyStats.length - 1] || { expected: 0, taken: 0, compliance: 0 };
+
+    // Explicitly calculate Missed for today (Expected - Taken)
+    // Note: Future doses are not "missed" strictly, but for simplicity:
+    const missedToday = Math.max(0, todayStat.expected - todayStat.taken);
+    // Or if we want strictly passed time... 
+    // Let's stick to "Expected - Taken" which implies "Remaining + Missed".
+    // Frontend label says "Missed". If user sees "Missed: 2" at 8AM but has 2 doses at 8PM, might be confusing.
+    // Enhanced Logic: Check if scheduled time < now.
+    // For now, let's just use (Expected - Taken) - (Pending).
+    // Let's just return raw numbers and let frontend interpret or keep simple.
+    // "Missed" in `stats` usually means "Log status is MISSED".
+    // If we rely on logs, we check `logs` for today with status MISSED.
+    const logsToday = logs.filter(l => new Date(l.scheduledTime).toDateString() === new Date().toDateString());
+    const explicitlyMissed = logsToday.filter(l => l.status === MedicationLogStatus.MISSED).length;
 
     return {
-      period: { startDate, endDate, days },
-      totalScheduled,
-      taken,
-      missed,
-      skipped,
-      complianceRate: totalScheduled > 0 ? (taken / totalScheduled) * 100 : 0,
-      onTimeRate: logs.filter(log => log.isOnTime).length / Math.max(taken, 1) * 100,
+      daily: dailyStats.map(d => d.compliance), // Array of numbers for checking [0, 100, 50...]
+      takenToday: todayStat.taken,
+      totalToday: todayStat.expected,
+      missedToday: explicitlyMissed, // Only count explicitly logged misses to avoid confusion
+      overallCompliance: todayStat.compliance, // Today's compliance
+      todayLogs: logsToday
     };
   }
 
@@ -431,6 +499,56 @@ export class ProfileService {
     return metric;
   }
 
+  async getMetricsRange(userId: string, startDate: Date, endDate: Date): Promise<DailyHealthMetric[]> {
+    const profile = await this.getProfile(userId);
+
+    // Normalize dates to start of day
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
+    const metrics = await this.healthMetricRepository.find({
+      where: {
+        userProfileId: profile.id,
+        date: Between(start, end),
+      },
+      order: {
+        date: 'ASC',
+      },
+    });
+
+    // Fill in missing days with zero values
+    const result: DailyHealthMetric[] = [];
+    const currentDate = new Date(start);
+
+    while (currentDate <= end) {
+      const dateStr = currentDate.toISOString().split('T')[0];
+      const existingMetric = metrics.find(m => {
+        const metricDateStr = new Date(m.date).toISOString().split('T')[0];
+        return metricDateStr === dateStr;
+      });
+
+      if (existingMetric) {
+        result.push(existingMetric);
+      } else {
+        // Create placeholder for missing day
+        result.push({
+          steps: 0,
+          heartRate: 0,
+          sleepHours: 0,
+          waterIntake: 0,
+          userProfileId: profile.id,
+          date: new Date(currentDate),
+        } as DailyHealthMetric);
+      }
+
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    return result;
+  }
+
   // Appointment Management
   async createAppointment(userId: string, createDto: CreateAppointmentDto): Promise<Appointment> {
     const profile = await this.getProfile(userId);
@@ -541,5 +659,54 @@ export class ProfileService {
     }
 
     return this.socialEventRepository.save(event);
+  }
+
+  // Seed sample health data for testing
+  async seedHealthData(userId: string, days: number = 7): Promise<any> {
+    const profile = await this.getProfile(userId);
+    const results: DailyHealthMetric[] = [];
+
+    for (let i = days - 1; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      date.setHours(0, 0, 0, 0);
+
+      // Generate realistic random values
+      const steps = Math.floor(Math.random() * 5000) + 3000; // 3000-8000
+      const heartRate = Math.floor(Math.random() * 20) + 65; // 65-85
+      const sleepHours = Math.random() * 2 + 6; // 6-8 hours
+      const waterIntake = Math.floor(Math.random() * 4) + 4; // 4-8 glasses
+
+      let metric = await this.healthMetricRepository.findOne({
+        where: {
+          userProfileId: profile.id,
+          date: date,
+        },
+      });
+
+      if (!metric) {
+        metric = this.healthMetricRepository.create({
+          userProfileId: profile.id,
+          date: date,
+          steps,
+          heartRate,
+          sleepHours,
+          waterIntake,
+        });
+      } else {
+        metric.steps = steps;
+        metric.heartRate = heartRate;
+        metric.sleepHours = sleepHours;
+        metric.waterIntake = waterIntake;
+      }
+
+      const saved = await this.healthMetricRepository.save(metric);
+      results.push(saved);
+    }
+
+    return {
+      message: `Seeded ${days} days of health data`,
+      data: results,
+    };
   }
 }

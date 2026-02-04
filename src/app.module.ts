@@ -33,6 +33,7 @@ import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { FirebaseAdminModule } from './common/services/firebase-admin.module';
 import { MonitoringModule } from './monitoring/monitoring.module';
 import { VoiceModule } from './voice/voice.module';
+import { GraphModule } from './graph/graph.module';
 
 // Common interceptors
 import { AuditLogInterceptor } from './common/interceptors/audit-log.interceptor';
@@ -46,6 +47,7 @@ import { Medication } from './profile/entities/medication.entity';
 import { MedicationLog } from './profile/entities/medication-log.entity';
 import { DailyHealthMetric } from './profile/entities/daily-health-metric.entity';
 import { Appointment } from './profile/entities/appointment.entity';
+import { SocialEvent } from './profile/entities/social-event.entity';
 import { TelemetryData } from './device/entities/telemetry.entity';
 import { Vitals } from './device/entities/vitals.entity';
 import { SOSAlert } from './device/entities/sos-alert.entity';
@@ -133,7 +135,7 @@ import { Subscription } from './subscriptions/entities/subscription.entity';
         username: configService.get('database.profile.username'),
         password: configService.get('database.profile.password'),
         database: configService.get('database.profile.database'),
-        entities: [UserProfile, Medication, MedicationLog, DailyHealthMetric, Appointment],
+        entities: [UserProfile, Medication, MedicationLog, DailyHealthMetric, Appointment, SocialEvent],
         synchronize: configService.get('app.environment') === 'development', // Enable sync in dev for rapid iteration
         logging: configService.get('app.environment') === 'development',
         ssl: configService.get('app.environment') === 'production'
@@ -222,6 +224,7 @@ import { Subscription } from './subscriptions/entities/subscription.entity';
     FirebaseAdminModule,
     MonitoringModule,
     VoiceModule,
+    GraphModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

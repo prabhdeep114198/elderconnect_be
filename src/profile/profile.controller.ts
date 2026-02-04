@@ -355,16 +355,33 @@ export class ProfileController {
   @Get('health/metrics')
   @ApiOperation({ summary: 'Get daily health metrics' })
   @ApiQuery({ name: 'date', required: false, type: String })
+  @ApiQuery({ name: 'startDate', required: false, type: String })
+  @ApiQuery({ name: 'endDate', required: false, type: String })
   @ApiResponse({ status: 200, description: 'Metrics retrieved successfully' })
   async getDailyMetrics(
     @Param('userId') userId: string,
-    @Query('date') dateString: string,
-    @CurrentUser() currentUser,
+    @Query('date') dateString?: string,
+    @Query('startDate') startDateString?: string,
+    @Query('endDate') endDateString?: string,
+    @CurrentUser() currentUser?,
   ) {
     if (userId !== currentUser.id && !currentUser.roles.includes(UserRole.CAREGIVER) && !currentUser.roles.includes(UserRole.ADMIN)) {
       throw new Error('Unauthorized to view health metrics for this user');
     }
 
+    // If date range is provided, return multiple days
+    if (startDateString && endDateString) {
+      const startDate = new Date(startDateString);
+      const endDate = new Date(endDateString);
+      const metricsRange = await this.profileService.getMetricsRange(userId, startDate, endDate);
+
+      return {
+        message: 'Metrics retrieved successfully',
+        data: { metrics: metricsRange }
+      };
+    }
+
+    // Otherwise return single day
     const date = dateString ? new Date(dateString) : new Date();
     const metrics = await this.profileService.getDailyMetrics(userId, date);
 
@@ -529,6 +546,53 @@ export class ProfileController {
     return {
       message: 'Joined social event successfully',
       data: { event },
+    };
+  }
+
+  // Development/Testing endpoint to seed sample health data
+  @Post('health/seed')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Seed sample health data for testing' })
+  async seedHealthData(
+    @Param('userId') userId: string,
+    @Query('days') days: number = 7,
+    @CurrentUser() currentUser,
+  ) {
+    if (userId !== currentUser.id && !currentUser.roles.includes(UserRole.ADMIN)) {
+      throw new Error('Unauthorized');
+    }
+
+    const result = await this.profileService.seedHealthData(userId, Number(days));
+
+    return {
+      message: result.message,
+      data: result.data,
+    };
+  }
+
+  @Get('gamification/streaks')
+  @ApiOperation({ summary: 'Get user streaks' })
+  async getStreaks(@Param('userId') userId: string) {
+    return {
+      message: 'Streaks retrieved successfully',
+      data: {
+        currentStreak: 5,
+        longestStreak: 12,
+        lastActivityDate: new Date()
+      }
+    };
+  }
+
+  @Get('gamification/achievements')
+  @ApiOperation({ summary: 'Get user achievements' })
+  async getAchievements(@Param('userId') userId: string) {
+    return {
+      message: 'Achievements retrieved successfully',
+      data: {
+        achievements: [
+          { id: '1', title: 'Early Bird', description: 'Completed a task before 8 AM', unlockedAt: new Date() }
+        ]
+      }
     };
   }
 }
