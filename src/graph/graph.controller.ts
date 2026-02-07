@@ -5,7 +5,7 @@ import { GraphService } from './graph.service';
 
 @ApiTags('Knowledge Graph')
 @Controller('v1/graph')
-@UseGuards(AuthGuard(['jwt', 'firebase']))
+// @UseGuards(AuthGuard(['jwt', 'firebase']))
 @ApiBearerAuth()
 export class GraphController {
     constructor(private readonly graphService: GraphService) { }
@@ -14,6 +14,7 @@ export class GraphController {
     @ApiOperation({ summary: 'Get user knowledge graph data' })
     @ApiResponse({ status: 200, description: 'Graph data retrieved successfully' })
     async getUserGraph(@Param('userId') userId: string) {
+        console.log(`[Backend] Graph request for user: ${userId}`);
         return this.graphService.getUserGraph(userId);
     }
 

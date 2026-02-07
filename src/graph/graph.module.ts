@@ -6,6 +6,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Vitals } from '../device/entities/vitals.entity';
 import { TelemetryData } from '../device/entities/telemetry.entity';
 import { UserProfile } from '../profile/entities/user-profile.entity';
+import { Medication } from '../profile/entities/medication.entity';
+import { Appointment } from '../profile/entities/appointment.entity';
 import neo4j from 'neo4j-driver';
 import { AuthModule } from '../auth/auth.module';
 
@@ -13,7 +15,7 @@ import { AuthModule } from '../auth/auth.module';
     imports: [
         ConfigModule,
         TypeOrmModule.forFeature([Vitals, TelemetryData], 'vitals'),
-        TypeOrmModule.forFeature([UserProfile], 'profile'),
+        TypeOrmModule.forFeature([UserProfile, Medication, Appointment], 'profile'),
         AuthModule,
     ],
     controllers: [GraphController],
@@ -24,7 +26,7 @@ import { AuthModule } from '../auth/auth.module';
             useFactory: async (configService: ConfigService) => {
                 const uri = configService.get<string>('NEO4J_URI', 'bolt://localhost:7687');
                 const user = configService.get<string>('NEO4J_USER', 'neo4j');
-                const password = configService.get<string>('NEO4J_PASSWORD', 'test');
+                const password = configService.get<string>('NEO4J_PASSWORD', 'neo4j');
                 return neo4j.driver(uri, neo4j.auth.basic(user, password));
             },
             inject: [ConfigService],

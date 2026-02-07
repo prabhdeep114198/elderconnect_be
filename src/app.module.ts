@@ -114,7 +114,7 @@ import { Subscription } from './subscriptions/entities/subscription.entity';
         password: configService.get('database.auth.password'),
         database: configService.get('database.auth.database'),
         entities: [User, Device, Subscription],
-        synchronize: configService.get('app.environment') === 'development', // Enable sync in dev for rapid iteration
+        synchronize: false, // Set to false to prevent data loss and use migrations instead
         logging: configService.get('app.environment') === 'development',
         ssl: configService.get('app.environment') === 'production'
           ? { rejectUnauthorized: true } // Proper SSL validation in production
@@ -136,7 +136,7 @@ import { Subscription } from './subscriptions/entities/subscription.entity';
         password: configService.get('database.profile.password'),
         database: configService.get('database.profile.database'),
         entities: [UserProfile, Medication, MedicationLog, DailyHealthMetric, Appointment, SocialEvent],
-        synchronize: configService.get('app.environment') === 'development', // Enable sync in dev for rapid iteration
+        synchronize: false, // Set to false to prevent data loss and use migrations instead
         logging: configService.get('app.environment') === 'development',
         ssl: configService.get('app.environment') === 'production'
           ? { rejectUnauthorized: true } // Proper SSL validation in production
@@ -158,7 +158,7 @@ import { Subscription } from './subscriptions/entities/subscription.entity';
         password: configService.get('database.vitals.password'),
         database: configService.get('database.vitals.database'),
         entities: [TelemetryData, Vitals, SOSAlert],
-        synchronize: configService.get('app.environment') === 'development', // Enable sync in dev for rapid iteration
+        synchronize: false, // Set to false to prevent data loss and use migrations instead
         logging: configService.get('app.environment') === 'development',
         ssl: configService.get('app.environment') === 'production'
           ? { rejectUnauthorized: true } // Proper SSL validation in production
@@ -180,7 +180,7 @@ import { Subscription } from './subscriptions/entities/subscription.entity';
         password: configService.get('database.media.password'),
         database: configService.get('database.media.database'),
         entities: [MediaFile],
-        synchronize: configService.get('app.environment') === 'development', // Enable sync in dev for rapid iteration
+        synchronize: false, // Set to false to prevent data loss and use migrations instead
         logging: configService.get('app.environment') === 'development',
         ssl: configService.get('app.environment') === 'production'
           ? { rejectUnauthorized: true } // Proper SSL validation in production
@@ -202,7 +202,7 @@ import { Subscription } from './subscriptions/entities/subscription.entity';
         password: configService.get('database.audit.password'),
         database: configService.get('database.audit.database'),
         entities: [AuditLog, Notification, NotificationTemplate],
-        synchronize: configService.get('app.environment') === 'development', // Enable sync in dev for rapid iteration
+        synchronize: false, // Set to false to prevent data loss and use migrations instead
         logging: configService.get('app.environment') === 'development',
         ssl: configService.get('app.environment') === 'production'
           ? { rejectUnauthorized: true } // Proper SSL validation in production

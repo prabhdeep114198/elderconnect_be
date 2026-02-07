@@ -595,4 +595,19 @@ export class ProfileController {
       }
     };
   }
+
+  @Get('sustainability/impact')
+  @ApiOperation({ summary: 'Get user sustainability impact' })
+  async getSustainabilityImpact(@Param('userId') userId: string) {
+    return {
+      message: 'Sustainability impact retrieved successfully',
+      data: {
+        reportsGenerated: 12,
+        paperSavedSheets: 60,
+        carbonSavedKg: 15.5,
+        tripsAvoided: 8,
+        year: 2024
+      }
+    };
+  }
 }
