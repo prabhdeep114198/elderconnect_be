@@ -32,6 +32,8 @@ import { ChatModule } from './chat/chat.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { FirebaseAdminModule } from './common/services/firebase-admin.module';
 import { MonitoringModule } from './monitoring/monitoring.module';
+import { VoiceModule } from './voice/voice.module';
+import { GraphModule } from './graph/graph.module';
 
 // Common interceptors
 import { AuditLogInterceptor } from './common/interceptors/audit-log.interceptor';
@@ -45,6 +47,7 @@ import { Medication } from './profile/entities/medication.entity';
 import { MedicationLog } from './profile/entities/medication-log.entity';
 import { DailyHealthMetric } from './profile/entities/daily-health-metric.entity';
 import { Appointment } from './profile/entities/appointment.entity';
+import { SocialEvent } from './profile/entities/social-event.entity';
 import { TelemetryData } from './device/entities/telemetry.entity';
 import { Vitals } from './device/entities/vitals.entity';
 import { SOSAlert } from './device/entities/sos-alert.entity';
@@ -111,7 +114,7 @@ import { Subscription } from './subscriptions/entities/subscription.entity';
         password: configService.get('database.auth.password'),
         database: configService.get('database.auth.database'),
         entities: [User, Device, Subscription],
-        synchronize: false, // NEVER use synchronize in production - use migrations
+        synchronize: false, // Set to false to prevent data loss and use migrations instead
         logging: configService.get('app.environment') === 'development',
         ssl: configService.get('app.environment') === 'production'
           ? { rejectUnauthorized: true } // Proper SSL validation in production
@@ -132,8 +135,8 @@ import { Subscription } from './subscriptions/entities/subscription.entity';
         username: configService.get('database.profile.username'),
         password: configService.get('database.profile.password'),
         database: configService.get('database.profile.database'),
-        entities: [UserProfile, Medication, MedicationLog, DailyHealthMetric, Appointment],
-        synchronize: configService.get('app.environment') === 'development', // Enable sync in dev for rapid iteration
+        entities: [UserProfile, Medication, MedicationLog, DailyHealthMetric, Appointment, SocialEvent],
+        synchronize: false, // Set to false to prevent data loss and use migrations instead
         logging: configService.get('app.environment') === 'development',
         ssl: configService.get('app.environment') === 'production'
           ? { rejectUnauthorized: true } // Proper SSL validation in production
@@ -155,7 +158,7 @@ import { Subscription } from './subscriptions/entities/subscription.entity';
         password: configService.get('database.vitals.password'),
         database: configService.get('database.vitals.database'),
         entities: [TelemetryData, Vitals, SOSAlert],
-        synchronize: false, // NEVER use synchronize in production - use migrations
+        synchronize: false, // Set to false to prevent data loss and use migrations instead
         logging: configService.get('app.environment') === 'development',
         ssl: configService.get('app.environment') === 'production'
           ? { rejectUnauthorized: true } // Proper SSL validation in production
@@ -177,7 +180,7 @@ import { Subscription } from './subscriptions/entities/subscription.entity';
         password: configService.get('database.media.password'),
         database: configService.get('database.media.database'),
         entities: [MediaFile],
-        synchronize: false, // NEVER use synchronize in production - use migrations
+        synchronize: false, // Set to false to prevent data loss and use migrations instead
         logging: configService.get('app.environment') === 'development',
         ssl: configService.get('app.environment') === 'production'
           ? { rejectUnauthorized: true } // Proper SSL validation in production
@@ -199,7 +202,7 @@ import { Subscription } from './subscriptions/entities/subscription.entity';
         password: configService.get('database.audit.password'),
         database: configService.get('database.audit.database'),
         entities: [AuditLog, Notification, NotificationTemplate],
-        synchronize: false, // NEVER use synchronize in production - use migrations
+        synchronize: false, // Set to false to prevent data loss and use migrations instead
         logging: configService.get('app.environment') === 'development',
         ssl: configService.get('app.environment') === 'production'
           ? { rejectUnauthorized: true } // Proper SSL validation in production
@@ -220,6 +223,8 @@ import { Subscription } from './subscriptions/entities/subscription.entity';
     SubscriptionsModule,
     FirebaseAdminModule,
     MonitoringModule,
+    VoiceModule,
+    GraphModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

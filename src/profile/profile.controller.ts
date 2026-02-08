@@ -355,16 +355,33 @@ export class ProfileController {
   @Get('health/metrics')
   @ApiOperation({ summary: 'Get daily health metrics' })
   @ApiQuery({ name: 'date', required: false, type: String })
+  @ApiQuery({ name: 'startDate', required: false, type: String })
+  @ApiQuery({ name: 'endDate', required: false, type: String })
   @ApiResponse({ status: 200, description: 'Metrics retrieved successfully' })
   async getDailyMetrics(
     @Param('userId') userId: string,
-    @Query('date') dateString: string,
-    @CurrentUser() currentUser,
+    @Query('date') dateString?: string,
+    @Query('startDate') startDateString?: string,
+    @Query('endDate') endDateString?: string,
+    @CurrentUser() currentUser?,
   ) {
     if (userId !== currentUser.id && !currentUser.roles.includes(UserRole.CAREGIVER) && !currentUser.roles.includes(UserRole.ADMIN)) {
       throw new Error('Unauthorized to view health metrics for this user');
     }
 
+    // If date range is provided, return multiple days
+    if (startDateString && endDateString) {
+      const startDate = new Date(startDateString);
+      const endDate = new Date(endDateString);
+      const metricsRange = await this.profileService.getMetricsRange(userId, startDate, endDate);
+
+      return {
+        message: 'Metrics retrieved successfully',
+        data: { metrics: metricsRange }
+      };
+    }
+
+    // Otherwise return single day
     const date = dateString ? new Date(dateString) : new Date();
     const metrics = await this.profileService.getDailyMetrics(userId, date);
 
@@ -477,6 +494,114 @@ export class ProfileController {
 
     return {
       message: 'Appointment deleted successfully',
+    };
+  }
+
+  // Social Events
+  @Post('events')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Create a social gathering' })
+  async createSocialEvent(
+    @Param('userId') userId: string,
+    @Body() data: any,
+    @CurrentUser() currentUser,
+  ) {
+    if (userId !== currentUser.id && !currentUser.roles.includes(UserRole.ADMIN)) {
+      throw new Error('Unauthorized to host community events');
+    }
+
+    const event = await this.profileService.createSocialEvent(userId, data);
+
+    return {
+      message: 'Social event hosted successfully',
+      data: { event },
+    };
+  }
+
+  @Get('events')
+  @ApiOperation({ summary: 'Get all social gatherings' })
+  async getSocialEvents() {
+    const events = await this.profileService.getSocialEvents();
+
+    return {
+      message: 'Social events retrieved successfully',
+      data: { events },
+    };
+  }
+
+  @Post('events/:eventId/join')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Join a social gathering' })
+  async joinSocialEvent(
+    @Param('userId') userId: string,
+    @Param('eventId') eventId: string,
+    @CurrentUser() currentUser,
+  ) {
+    if (userId !== currentUser.id) {
+      throw new Error('Unauthorized to join event as another user');
+    }
+
+    const event = await this.profileService.joinSocialEvent(userId, eventId);
+
+    return {
+      message: 'Joined social event successfully',
+      data: { event },
+    };
+  }
+
+  // Development/Testing endpoint to seed sample health data
+  @Post('health/seed')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Seed sample health data for testing' })
+  async seedHealthData(
+    @Param('userId') userId: string,
+    @Query('days') days: number = 7,
+    @CurrentUser() currentUser,
+  ) {
+    if (userId !== currentUser.id && !currentUser.roles.includes(UserRole.ADMIN)) {
+      throw new Error('Unauthorized');
+    }
+
+    const result = await this.profileService.seedHealthData(userId, Number(days));
+
+    return {
+      message: result.message,
+      data: result.data,
+    };
+  }
+
+  @Get('gamification/streaks')
+  @ApiOperation({ summary: 'Get user streaks' })
+  async getStreaks(@Param('userId') userId: string) {
+    const streaks = await this.profileService.getStreaks(userId);
+    return {
+      message: 'Streaks retrieved successfully',
+      data: { streaks }
+    };
+  }
+
+  @Get('gamification/achievements')
+  @ApiOperation({ summary: 'Get user achievements' })
+  async getAchievements(@Param('userId') userId: string) {
+    const achievementsData = await this.profileService.getAchievements(userId);
+    return {
+      message: 'Achievements retrieved successfully',
+      data: achievementsData
+    };
+  }
+
+  @Get('sustainability/impact')
+  @ApiOperation({ summary: 'Get user sustainability impact' })
+  async getSustainabilityImpact(@Param('userId') userId: string) {
+    return {
+      message: 'Sustainability impact retrieved successfully',
+      data: {
+        reportsGenerated: 12,
+        paperSavedSheets: 60,
+        carbonSavedKg: 15.5,
+        tripsAvoided: 8,
+        year: 2024
+      }
     };
   }
 }

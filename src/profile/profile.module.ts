@@ -7,12 +7,13 @@ import { Medication } from './entities/medication.entity';
 import { MedicationLog } from './entities/medication-log.entity';
 import { DailyHealthMetric } from './entities/daily-health-metric.entity';
 import { Appointment } from './entities/appointment.entity';
+import { SocialEvent } from './entities/social-event.entity';
 import { AuditLogService } from '../common/services/audit-log.service';
 import { AuditLog } from '../common/services/entities/audit-log.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([UserProfile, Medication, MedicationLog, DailyHealthMetric, Appointment], 'profile'),
+    TypeOrmModule.forFeature([UserProfile, Medication, MedicationLog, DailyHealthMetric, Appointment, SocialEvent], 'profile'),
     TypeOrmModule.forFeature([AuditLog], 'audit'),
   ],
   controllers: [ProfileController],

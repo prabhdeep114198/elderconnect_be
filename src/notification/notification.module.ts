@@ -8,12 +8,14 @@ import { NotificationTemplate } from './entities/notification-template.entity';
 import { TwilioService } from './services/twilio.service';
 import { FCMService } from './services/fcm.service';
 import { KafkaService } from '../device/services/kafka.service';
+import { DeviceModule } from '../device/device.module';
 import { AuditLogModule } from '../common/services/audit-log.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Notification, NotificationTemplate], 'audit'),
     AuditLogModule,
+    DeviceModule,
     ScheduleModule.forRoot(),
   ],
   controllers: [NotificationController],
@@ -21,7 +23,6 @@ import { AuditLogModule } from '../common/services/audit-log.module';
     NotificationService,
     TwilioService,
     FCMService,
-    KafkaService,
   ],
   exports: [NotificationService, TwilioService, FCMService],
 })
