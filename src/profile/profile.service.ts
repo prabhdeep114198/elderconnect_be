@@ -340,12 +340,27 @@ export class ProfileService {
     const logsToday = logs.filter(l => new Date(l.scheduledTime).toDateString() === new Date().toDateString());
     const explicitlyMissed = logsToday.filter(l => l.status === MedicationLogStatus.MISSED).length;
 
+    const totalExpected = dailyStats.reduce((acc, d) => acc + d.expected, 0);
+    const totalTaken = dailyStats.reduce((acc, d) => acc + d.taken, 0);
+    const complianceRate = totalExpected > 0 ? Math.round((totalTaken / totalExpected) * 100) : 0;
+
+    // Calculate on-time rate
+    const onTimeLogs = logs.filter(l => {
+      if (!l.actualTime || l.status !== MedicationLogStatus.TAKEN) return false;
+      const sched = new Date(l.scheduledTime).getTime();
+      const act = new Date(l.actualTime).getTime();
+      return Math.abs(act - sched) <= 30 * 60 * 1000; // 30 mins
+    });
+    const onTimeRate = totalTaken > 0 ? Math.round((onTimeLogs.length / totalTaken) * 100) : 0;
+
     return {
       daily: dailyStats.map(d => d.compliance), // Array of numbers for checking [0, 100, 50...]
       takenToday: todayStat.taken,
       totalToday: todayStat.expected,
       missedToday: explicitlyMissed, // Only count explicitly logged misses to avoid confusion
       overallCompliance: todayStat.compliance, // Today's compliance
+      complianceRate,
+      onTimeRate,
       todayLogs: logsToday
     };
   }
@@ -707,6 +722,156 @@ export class ProfileService {
     return {
       message: `Seeded ${days} days of health data`,
       data: results,
+    };
+  }
+
+  async getStreaks(userId: string): Promise<any> {
+    const profile = await this.getProfile(userId);
+
+    // Calculate Medication Streak
+    const medLogs = await this.medicationLogRepository
+      .createQueryBuilder('log')
+      .innerJoin('log.medication', 'medication')
+      .where('medication.userProfileId = :profileId', { profileId: profile.id })
+      .orderBy('log.scheduledTime', 'DESC')
+      .getMany();
+
+    // Group logs by date
+    const logsByDate: { [date: string]: MedicationLog[] } = {};
+    medLogs.forEach(log => {
+      const date = new Date(log.scheduledTime).toISOString().split('T')[0];
+      if (!logsByDate[date]) logsByDate[date] = [];
+      logsByDate[date].push(log);
+    });
+
+    let medicationStreak = 0;
+    const today = new Date().toISOString().split('T')[0];
+
+    // Check if user has logs for today or yesterday to continue streak
+    let currentCheckDate = new Date();
+    if (!logsByDate[today]) {
+      currentCheckDate.setDate(currentCheckDate.getDate() - 1);
+    }
+
+    // Maximum 100 days check
+    for (let i = 0; i < 100; i++) {
+      const checkDateStr = currentCheckDate.toISOString().split('T')[0];
+      const dayLogs = logsByDate[checkDateStr];
+
+      if (!dayLogs || dayLogs.length === 0) break;
+
+      const allTaken = dayLogs.every(l => l.status === MedicationLogStatus.TAKEN);
+      if (allTaken) {
+        medicationStreak++;
+        currentCheckDate.setDate(currentCheckDate.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+
+    // Calculate Active Streak (Steps >= 5000)
+    const metrics = await this.healthMetricRepository.find({
+      where: { userProfileId: profile.id },
+      order: { date: 'DESC' },
+    });
+
+    let activeStreak = 0;
+    let metricCheckDate = new Date();
+    const todayMetric = metrics.find(m => new Date(m.date).toISOString().split('T')[0] === today);
+    if (!todayMetric || todayMetric.steps < 5000) {
+      metricCheckDate.setDate(metricCheckDate.getDate() - 1);
+    }
+
+    for (const m of metrics) {
+      const mDate = new Date(m.date).toISOString().split('T')[0];
+      const checkDateStr = metricCheckDate.toISOString().split('T')[0];
+
+      if (mDate === checkDateStr) {
+        if (m.steps >= 5000) {
+          activeStreak++;
+          metricCheckDate.setDate(metricCheckDate.getDate() - 1);
+        } else {
+          break;
+        }
+      } else if (mDate < checkDateStr) {
+        break; // Gap in data
+      }
+    }
+
+    return {
+      medication: medicationStreak,
+      steps: activeStreak,
+      health: Math.min(medicationStreak, activeStreak),
+    };
+  }
+
+  async getAchievements(userId: string): Promise<any> {
+    const profile = await this.getProfile(userId);
+    const metrics = await this.healthMetricRepository.find({
+      where: { userProfileId: profile.id },
+    });
+
+    const totalSteps = metrics.reduce((acc, m) => acc + (m.steps || 0), 0);
+    const avgSleep = metrics.length > 0 ? metrics.reduce((acc, m) => acc + (m.sleepHours || 0), 0) / metrics.length : 0;
+    const maxWater = metrics.length > 0 ? Math.max(...metrics.map(m => m.waterIntake || 0)) : 0;
+
+    const achievements: any[] = [];
+
+    if (totalSteps > 100000) {
+      achievements.push({
+        id: 'steps_100k',
+        name: 'Centurion Walker',
+        description: 'Walked over 100,000 steps total!',
+        icon: 'walk',
+        color: '#4CAF50',
+        date: new Date(),
+      });
+    } else if (totalSteps > 50000) {
+      achievements.push({
+        id: 'steps_50k',
+        name: 'Half-Centurion',
+        description: 'Walked over 50,000 steps total!',
+        icon: 'walk',
+        color: '#8BC34A',
+        date: new Date(),
+      });
+    }
+
+    if (avgSleep >= 7 && avgSleep <= 9 && metrics.length >= 7) {
+      achievements.push({
+        id: 'sleep_pro',
+        name: 'Sleep Master',
+        description: 'Maintained perfect sleep for a week.',
+        icon: 'moon',
+        color: '#9C27B0',
+        date: new Date(),
+      });
+    }
+
+    if (maxWater >= 8) {
+      achievements.push({
+        id: 'hydration_hero',
+        name: 'Hydration Hero',
+        description: 'Reached 8+ cups of water in a single day!',
+        icon: 'water',
+        color: '#2196F3',
+        date: new Date(),
+      });
+    }
+
+    if (achievements.length === 0) {
+      achievements.push({
+        id: 'welcome',
+        name: 'Healthy Start',
+        description: 'Joined ElderConnect and started your health journey.',
+        icon: 'heart',
+        color: '#E91E63',
+        date: profile.createdAt || new Date(),
+      });
+    }
+
+    return {
+      achievements
     };
   }
 }

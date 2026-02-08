@@ -573,26 +573,20 @@ export class ProfileController {
   @Get('gamification/streaks')
   @ApiOperation({ summary: 'Get user streaks' })
   async getStreaks(@Param('userId') userId: string) {
+    const streaks = await this.profileService.getStreaks(userId);
     return {
       message: 'Streaks retrieved successfully',
-      data: {
-        currentStreak: 5,
-        longestStreak: 12,
-        lastActivityDate: new Date()
-      }
+      data: { streaks }
     };
   }
 
   @Get('gamification/achievements')
   @ApiOperation({ summary: 'Get user achievements' })
   async getAchievements(@Param('userId') userId: string) {
+    const achievementsData = await this.profileService.getAchievements(userId);
     return {
       message: 'Achievements retrieved successfully',
-      data: {
-        achievements: [
-          { id: '1', title: 'Early Bird', description: 'Completed a task before 8 AM', unlockedAt: new Date() }
-        ]
-      }
+      data: achievementsData
     };
   }
 
