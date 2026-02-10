@@ -466,6 +466,7 @@ export class ProfileService {
         waterIntake: 0,
         heartRate: 0,
         sleepHours: 0,
+        oxygenSaturation: 0,
       });
     }
 
@@ -481,6 +482,9 @@ export class ProfileService {
         break;
       case 'water':
         metric.waterIntake = updateDto.value;
+        break;
+      case 'oxygenSaturation':
+        metric.oxygenSaturation = updateDto.value;
         break;
     }
 
@@ -506,6 +510,7 @@ export class ProfileService {
         heartRate: 72, // Default average
         sleepHours: 0,
         waterIntake: 0,
+        oxygenSaturation: 98, // Default healthy level
         userProfileId: profile.id,
         date: queryDate,
       } as DailyHealthMetric;
@@ -553,6 +558,7 @@ export class ProfileService {
           heartRate: 0,
           sleepHours: 0,
           waterIntake: 0,
+          oxygenSaturation: 0,
           userProfileId: profile.id,
           date: new Date(currentDate),
         } as DailyHealthMetric);
@@ -707,12 +713,14 @@ export class ProfileService {
           heartRate,
           sleepHours,
           waterIntake,
+          oxygenSaturation: Math.floor(Math.random() * 5) + 95, // 95-100
         });
       } else {
         metric.steps = steps;
         metric.heartRate = heartRate;
         metric.sleepHours = sleepHours;
         metric.waterIntake = waterIntake;
+        metric.oxygenSaturation = Math.floor(Math.random() * 5) + 95; // 95-100
       }
 
       const saved = await this.healthMetricRepository.save(metric);
