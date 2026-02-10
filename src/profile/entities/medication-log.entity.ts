@@ -4,10 +4,12 @@ import {
   Column,
   CreateDateColumn,
   ManyToOne,
+  OneToMany,
   JoinColumn,
   Index,
 } from 'typeorm';
 import { Medication } from './medication.entity';
+import { ReminderLog } from './reminder-log.entity';
 
 export enum MedicationLogStatus {
   TAKEN = 'taken',
@@ -69,15 +71,18 @@ export class MedicationLog {
   @CreateDateColumn()
   createdAt: Date;
 
+  @OneToMany(() => ReminderLog, (reminder) => reminder.medicationLog)
+  reminderLogs: ReminderLog[];
+
   get isOnTime(): boolean {
     if (!this.actualTime || this.status !== MedicationLogStatus.TAKEN) {
       return false;
     }
-    
+
     const scheduledTime = new Date(this.scheduledTime);
     const actualTime = new Date(this.actualTime);
     const diffMinutes = Math.abs(actualTime.getTime() - scheduledTime.getTime()) / (1000 * 60);
-    
+
     return diffMinutes <= 30; // Consider on-time if within 30 minutes
   }
 
@@ -85,11 +90,11 @@ export class MedicationLog {
     if (!this.actualTime || this.status !== MedicationLogStatus.TAKEN) {
       return null;
     }
-    
+
     const scheduledTime = new Date(this.scheduledTime);
     const actualTime = new Date(this.actualTime);
     const diffMinutes = (actualTime.getTime() - scheduledTime.getTime()) / (1000 * 60);
-    
+
     return Math.round(diffMinutes);
   }
 }

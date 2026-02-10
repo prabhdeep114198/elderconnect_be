@@ -10,14 +10,28 @@ import { Appointment } from './entities/appointment.entity';
 import { SocialEvent } from './entities/social-event.entity';
 import { AuditLogService } from '../common/services/audit-log.service';
 import { AuditLog } from '../common/services/entities/audit-log.entity';
+import { EmergencyPredictionService } from './services/emergency-prediction.service';
+import { EmergencyRiskLog } from './entities/emergency-risk-log.entity';
+import { ReminderLog } from './entities/reminder-log.entity';
+import { NotificationModule } from '../notification/notification.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([UserProfile, Medication, MedicationLog, DailyHealthMetric, Appointment, SocialEvent], 'profile'),
+    NotificationModule,
+    TypeOrmModule.forFeature([
+      UserProfile,
+      Medication,
+      MedicationLog,
+      DailyHealthMetric,
+      Appointment,
+      SocialEvent,
+      EmergencyRiskLog,
+      ReminderLog,
+    ], 'profile'),
     TypeOrmModule.forFeature([AuditLog], 'audit'),
   ],
   controllers: [ProfileController],
-  providers: [ProfileService, AuditLogService],
-  exports: [ProfileService],
+  providers: [ProfileService, AuditLogService, EmergencyPredictionService],
+  exports: [ProfileService, EmergencyPredictionService],
 })
 export class ProfileModule { }
