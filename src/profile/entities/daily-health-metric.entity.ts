@@ -34,6 +34,9 @@ export class DailyHealthMetric {
     @Column({ type: 'integer', default: 0 })
     waterIntake: number; // in cups
 
+    @Column({ type: 'integer', nullable: true })
+    oxygenSaturation: number; // SpO2 percentage
+
     @Column({ type: 'jsonb', nullable: true })
     additionalMetrics: Record<string, any>;
 

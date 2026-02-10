@@ -48,6 +48,8 @@ import { MedicationLog } from './profile/entities/medication-log.entity';
 import { DailyHealthMetric } from './profile/entities/daily-health-metric.entity';
 import { Appointment } from './profile/entities/appointment.entity';
 import { SocialEvent } from './profile/entities/social-event.entity';
+import { ReminderLog } from './profile/entities/reminder-log.entity';
+import { EmergencyRiskLog } from './profile/entities/emergency-risk-log.entity';
 import { TelemetryData } from './device/entities/telemetry.entity';
 import { Vitals } from './device/entities/vitals.entity';
 import { SOSAlert } from './device/entities/sos-alert.entity';
@@ -135,7 +137,7 @@ import { Subscription } from './subscriptions/entities/subscription.entity';
         username: configService.get('database.profile.username'),
         password: configService.get('database.profile.password'),
         database: configService.get('database.profile.database'),
-        entities: [UserProfile, Medication, MedicationLog, DailyHealthMetric, Appointment, SocialEvent],
+        entities: [UserProfile, Medication, MedicationLog, DailyHealthMetric, Appointment, SocialEvent, ReminderLog, EmergencyRiskLog],
         synchronize: false, // Set to false to prevent data loss and use migrations instead
         logging: configService.get('app.environment') === 'development',
         ssl: configService.get('app.environment') === 'production'
