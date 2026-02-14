@@ -24,9 +24,10 @@
     "migration:generate:vitals": "npm run typeorm -- migration:generate src/migrations/vitals/Migration -d src/config/data-source.ts",
     "migration:generate:media": "npm run typeorm -- migration:generate src/migrations/media/Migration -d src/config/data-source.ts",
     "migration:generate:audit": "npm run typeorm -- migration:generate src/migrations/audit/Migration -d src/config/data-source.ts",
-    "migration:run:auth": "npm run typeorm -- migration:run -d src/config/data-source.ts",
-    "migration:run:all": "npm run migration:run:auth",
-    "migration:revert:auth": "npm run typeorm -- migration:revert -d src/config/data-source.ts",
+  "migration:run:auth": "npm run typeorm -- migration:run -d src/config/data-source.ts",
+  "migration:run:profile": "npm run typeorm -- migration:run -d src/config/data-source.ts",
+  "migration:run:all": "npm run migration:run:auth && npm run migration:run:profile",
+  "migration:revert:auth": "npm run typeorm -- migration:revert -d src/config/data-source.ts",
     "prepare": "husky install"
   },
   "dependencies": {
