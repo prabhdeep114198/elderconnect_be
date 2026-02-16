@@ -12,7 +12,7 @@ export const databaseConfig = registerAs('database', () => ({
     entities: [__dirname + '/../auth/entities/*.entity{.ts,.js}'],
     synchronize: process.env.NODE_ENV !== 'production',
     logging: process.env.NODE_ENV === 'development',
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+    ssl: process.env.DB_SSL === 'true' || process.env.DB_HOST?.includes('neon.tech') || process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
   } as TypeOrmModuleOptions,
 
   profile: {
@@ -25,7 +25,7 @@ export const databaseConfig = registerAs('database', () => ({
     entities: [__dirname + '/../profile/entities/*.entity{.ts,.js}'],
     synchronize: process.env.NODE_ENV !== 'production',
     logging: process.env.NODE_ENV === 'development',
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+    ssl: process.env.DB_SSL === 'true' || process.env.DB_HOST?.includes('neon.tech') || process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
   } as TypeOrmModuleOptions,
 
   vitals: {
@@ -38,7 +38,7 @@ export const databaseConfig = registerAs('database', () => ({
     entities: [__dirname + '/../device/entities/*.entity{.ts,.js}'],
     synchronize: process.env.NODE_ENV !== 'production',
     logging: process.env.NODE_ENV === 'development',
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+    ssl: process.env.DB_SSL === 'true' || process.env.DB_HOST?.includes('neon.tech') || process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
   } as TypeOrmModuleOptions,
 
   media: {
@@ -51,7 +51,7 @@ export const databaseConfig = registerAs('database', () => ({
     entities: [__dirname + '/../media/entities/*.entity{.ts,.js}'],
     synchronize: process.env.NODE_ENV !== 'production',
     logging: process.env.NODE_ENV === 'development',
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+    ssl: process.env.DB_SSL === 'true' || process.env.DB_HOST?.includes('neon.tech') || process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
   } as TypeOrmModuleOptions,
 
   audit: {
@@ -64,7 +64,7 @@ export const databaseConfig = registerAs('database', () => ({
     entities: [__dirname + '/../common/entities/*.entity{.ts,.js}'],
     synchronize: process.env.NODE_ENV !== 'production',
     logging: process.env.NODE_ENV === 'development',
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+    ssl: process.env.DB_SSL === 'true' || process.env.DB_HOST?.includes('neon.tech') || process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
   } as TypeOrmModuleOptions,
 }));
 
