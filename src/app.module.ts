@@ -118,9 +118,8 @@ import { Subscription } from './subscriptions/entities/subscription.entity';
         entities: [User, Device, Subscription],
         synchronize: false, // Set to false to prevent data loss and use migrations instead
         logging: configService.get('app.environment') === 'development',
-        ssl: configService.get('app.environment') === 'production'
-          ? { rejectUnauthorized: true } // Proper SSL validation in production
-          : false,
+  // Use the database config's SSL setting so env flags like requiring SSL are honored
+  ssl: configService.get('database.auth.ssl'),
         extra: { max: 20, idleTimeoutMillis: 30000, connectionTimeoutMillis: 2000 },
       }),
       inject: [ConfigService],
@@ -140,9 +139,7 @@ import { Subscription } from './subscriptions/entities/subscription.entity';
         entities: [UserProfile, Medication, MedicationLog, DailyHealthMetric, Appointment, SocialEvent, ReminderLog, EmergencyRiskLog],
         synchronize: false, // Set to false to prevent data loss and use migrations instead
         logging: configService.get('app.environment') === 'development',
-        ssl: configService.get('app.environment') === 'production'
-          ? { rejectUnauthorized: true } // Proper SSL validation in production
-          : false,
+  ssl: configService.get('database.profile.ssl'),
         extra: { max: 20, idleTimeoutMillis: 30000, connectionTimeoutMillis: 2000 },
       }),
       inject: [ConfigService],
@@ -162,9 +159,7 @@ import { Subscription } from './subscriptions/entities/subscription.entity';
         entities: [TelemetryData, Vitals, SOSAlert],
         synchronize: false, // Set to false to prevent data loss and use migrations instead
         logging: configService.get('app.environment') === 'development',
-        ssl: configService.get('app.environment') === 'production'
-          ? { rejectUnauthorized: true } // Proper SSL validation in production
-          : false,
+  ssl: configService.get('database.vitals.ssl'),
         extra: { max: 30, idleTimeoutMillis: 30000, connectionTimeoutMillis: 2000 },
       }),
       inject: [ConfigService],
@@ -184,9 +179,7 @@ import { Subscription } from './subscriptions/entities/subscription.entity';
         entities: [MediaFile],
         synchronize: false, // Set to false to prevent data loss and use migrations instead
         logging: configService.get('app.environment') === 'development',
-        ssl: configService.get('app.environment') === 'production'
-          ? { rejectUnauthorized: true } // Proper SSL validation in production
-          : false,
+  ssl: configService.get('database.media.ssl'),
         extra: { max: 15, idleTimeoutMillis: 30000, connectionTimeoutMillis: 2000 },
       }),
       inject: [ConfigService],
@@ -206,9 +199,7 @@ import { Subscription } from './subscriptions/entities/subscription.entity';
         entities: [AuditLog, Notification, NotificationTemplate],
         synchronize: false, // Set to false to prevent data loss and use migrations instead
         logging: configService.get('app.environment') === 'development',
-        ssl: configService.get('app.environment') === 'production'
-          ? { rejectUnauthorized: true } // Proper SSL validation in production
-          : false,
+  ssl: configService.get('database.audit.ssl'),
         extra: { max: 25, idleTimeoutMillis: 30000, connectionTimeoutMillis: 2000 },
       }),
       inject: [ConfigService],
