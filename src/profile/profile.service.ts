@@ -66,6 +66,10 @@ export class ProfileService {
     return profile;
   }
 
+  async getProfileList(): Promise<UserProfile[]> {
+    return this.profileRepository.find();
+  }
+
   async updateProfile(userId: string, updateProfileDto: UpdateProfileDto): Promise<UserProfile> {
     const profile = await this.getProfile(userId);
 

@@ -1,13 +1,14 @@
 
-import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ChatRequestDto, ChatResponseDto, UserContext, N8nPayload, ContextScores, VitalRecord } from './dto/chat.dto';
-import { randomUUID } from 'crypto';
 import { InjectRepository } from '@nestjs/typeorm';
+import { randomUUID } from 'crypto';
 import { Repository } from 'typeorm';
 import { User } from '../auth/entities/user.entity';
-import { UserProfile } from '../profile/entities/user-profile.entity';
 import { Vitals } from '../device/entities/vitals.entity';
+import { HealthAnalyticsService } from '../monitoring/analytics.service';
+import { UserProfile } from '../profile/entities/user-profile.entity';
+import { ChatRequestDto, ChatResponseDto, ContextScores, N8nPayload, UserContext } from './dto/chat.dto';
 
 @Injectable()
 export class ChatService {
@@ -23,6 +24,7 @@ export class ChatService {
         private readonly userProfileRepository: Repository<UserProfile>,
         @InjectRepository(Vitals, 'vitals')
         private readonly vitalsRepository: Repository<Vitals>,
+        private readonly analyticsService: HealthAnalyticsService,
     ) {
         this.n8nWebhookUrl = this.configService.get<string>('n8n.webhookUrl') || '';
         this.n8nApiKey = this.configService.get<string>('n8n.apiKey') || '';
@@ -113,24 +115,17 @@ export class ChatService {
             timestamp: v.recordedAt.toISOString()
         }));
 
-        // Default metrics if not available (implement real metrics later)
-        const metrics = {
-            physicalScore: 85, // Placeholder
-            mentalScore: 72,   // Placeholder
-            sleepScore: 65,    // Placeholder
-            socialScore: 90,   // Placeholder
-            dietScore: 80,     // Placeholder
-            exerciseScore: 40  // Placeholder
-        };
+        // Fetch real wellness scores from analytics service
+        const wellnessProfile = profile
+            ? await this.analyticsService.getWellnessProfile(userId, profile.id)
+            : { physicalScore: 70, mentalScore: 70, sleepScore: 70, socialScore: 70, dietScore: 70, exerciseScore: 70 };
 
         return {
             userId,
             name: `${user.firstName} ${user.lastName}`,
-            // Diary/Journal not implemented yet
             diaryEntries: [],
-            // Metrics (scores) not implemented yet
-            metrics,
-            lastMood: "neutral", // Placeholder
+            metrics: wellnessProfile,
+            lastMood: "neutral",
             vitals,
             conditions: profile?.medicalConditions || [],
             emergencyContact: profile?.emergencyContactPhone || ""

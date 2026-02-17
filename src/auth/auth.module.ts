@@ -41,7 +41,6 @@ import { DeviceAuthGuard } from '../common/guards/device-auth.guard';
     LocalStrategy,
     FirebaseStrategy,
     EmailService,
-    CacheService,
     TokenBlacklistService,
     ApiKeyGuard,
     DeviceAuthGuard,

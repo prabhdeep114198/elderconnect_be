@@ -32,6 +32,8 @@ import { ChatModule } from './chat/chat.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { FirebaseAdminModule } from './common/services/firebase-admin.module';
 import { MonitoringModule } from './monitoring/monitoring.module';
+import { CommonCacheModule } from './common/services/cache.module';
+import { PersonalizationModule } from './personalization/personalization.module';
 
 // Common interceptors
 import { AuditLogInterceptor } from './common/interceptors/audit-log.interceptor';
@@ -53,6 +55,7 @@ import { Notification } from './notification/entities/notification.entity';
 import { NotificationTemplate } from './notification/entities/notification-template.entity';
 import { AuditLog } from './common/services/entities/audit-log.entity';
 import { Subscription } from './subscriptions/entities/subscription.entity';
+import { UserInteraction } from './personalization/entities/user-interaction.entity';
 
 @Module({
   imports: [
@@ -132,7 +135,7 @@ import { Subscription } from './subscriptions/entities/subscription.entity';
         username: configService.get('database.profile.username'),
         password: configService.get('database.profile.password'),
         database: configService.get('database.profile.database'),
-        entities: [UserProfile, Medication, MedicationLog, DailyHealthMetric, Appointment],
+        entities: [UserProfile, Medication, MedicationLog, DailyHealthMetric, Appointment, UserInteraction],
         synchronize: configService.get('app.environment') === 'development', // Enable sync in dev for rapid iteration
         logging: configService.get('app.environment') === 'development',
         ssl: configService.get('app.environment') === 'production'
@@ -220,6 +223,8 @@ import { Subscription } from './subscriptions/entities/subscription.entity';
     SubscriptionsModule,
     FirebaseAdminModule,
     MonitoringModule,
+    CommonCacheModule,
+    PersonalizationModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
