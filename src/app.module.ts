@@ -6,7 +6,8 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { CacheModule } from '@nestjs/cache-manager';
 import { APP_GUARD, APP_INTERCEPTOR, APP_FILTER } from '@nestjs/core';
 import { ThrottlerGuard } from '@nestjs/throttler';
-
+import { PrivacyModule } from "./privacy/privacy.module";
+import { PrivacyPolicy } from "./privacy/entities/privacy-policy.entity";
 // Configuration
 import {
   appConfig,
@@ -78,6 +79,7 @@ import { Subscription } from './subscriptions/entities/subscription.entity';
       envFilePath: ['.env.local', '.env'],
       validate: validateEnvironment,
     }),
+    PrivacyModule,
 
     // Rate limiting
     ThrottlerModule.forRoot([
@@ -196,7 +198,7 @@ import { Subscription } from './subscriptions/entities/subscription.entity';
         username: configService.get('database.audit.username'),
         password: configService.get('database.audit.password'),
         database: configService.get('database.audit.database'),
-        entities: [AuditLog, Notification, NotificationTemplate],
+        entities: [AuditLog, Notification, NotificationTemplate,  PrivacyPolicy],
         synchronize: false, // Set to false to prevent data loss and use migrations instead
         logging: configService.get('app.environment') === 'development',
   ssl: configService.get('database.audit.ssl'),
