@@ -4,7 +4,7 @@ import { IsNumber, IsOptional, IsString, IsDateString } from 'class-validator';
 export class UpdateHealthMetricDto {
     @ApiProperty({ description: 'Type of metric to update', example: 'steps' })
     @IsString()
-    type: 'steps' | 'heartRate' | 'sleep' | 'water';
+    type: 'steps' | 'heartRate' | 'sleep' | 'water' | 'oxygenSaturation';
 
     @ApiProperty({ description: 'Value of the metric', example: 5000 })
     @IsNumber()

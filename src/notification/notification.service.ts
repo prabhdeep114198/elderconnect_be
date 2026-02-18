@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   Logger,
+  OnModuleInit,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In, MoreThan, Between } from 'typeorm';
@@ -39,7 +40,7 @@ export interface NotificationStats {
 }
 
 @Injectable()
-export class NotificationService {
+export class NotificationService implements OnModuleInit {
   private readonly logger = new Logger(NotificationService.name);
 
   constructor(
@@ -51,6 +52,30 @@ export class NotificationService {
     private readonly fcmService: FCMService,
     private readonly kafkaService: KafkaService,
   ) { }
+
+  async onModuleInit() {
+    this.kafkaService.setNotificationHandler(this.handleKafkaNotification.bind(this));
+  }
+
+  async handleKafkaNotification(data: any): Promise<void> {
+    const { userId, notification } = data;
+    this.logger.log(`Received notification request from Kafka for user ${userId}`);
+
+    try {
+      await this.createNotification({
+        userId,
+        type: notification.type || NotificationType.IN_APP,
+        category: notification.category || NotificationCategory.SYSTEM_NOTIFICATION,
+        title: notification.title,
+        message: notification.message,
+        priority: notification.priority,
+        data: notification.data,
+        recipient: notification.recipient,
+      });
+    } catch (error) {
+      this.logger.error(`Failed to process Kafka notification: ${error.message}`);
+    }
+  }
 
   // Core Notification Methods
   async createNotification(createDto: CreateNotificationDto): Promise<Notification> {
@@ -188,6 +213,14 @@ export class NotificationService {
       throw new BadRequestException('SMS recipient phone number is required');
     }
 
+    const isEmergency = notification.category === NotificationCategory.SOS_ALERT;
+
+    console.log('\n' + '-'.repeat(40));
+    console.log(` SENDING ${isEmergency ? ' EMERGENCY' : ''} SMS`);
+    console.log(`TO: ${notification.recipient}`);
+    console.log(`MESSAGE: ${notification.message}`);
+    console.log('-'.repeat(40) + '\n');
+
     // N8N Integration Placeholder
     // return this.httpService.post(process.env.N8N_WEBHOOK_URL, {
     //   type: 'SMS',
@@ -195,21 +228,20 @@ export class NotificationService {
     //   message: notification.message
     // }).toPromise();
 
-    // Twilio temporarily disabled for N8N integration
-    /*
-    return this.twilioService.sendSMS(
-      notification.recipient,
-      notification.message,
-      notification.priority,
-    );
-    */
-    return { success: true, message: 'Simulated N8N/Twilio handoff' };
+    return { success: true, message: 'Simulated N8N/Twilio handoff successful' };
   }
 
   private async sendPushNotification(notification: Notification): Promise<any> {
     if (!notification.recipient) {
       throw new BadRequestException('Push notification token is required');
     }
+
+    console.log('\n' + '-'.repeat(40));
+    console.log(`🔔 SENDING PUSH NOTIFICATION`);
+    console.log(`TO TOKEN: ${notification.recipient}`);
+    console.log(`TITLE: ${notification.title}`);
+    console.log(`BODY: ${notification.message}`);
+    console.log('-'.repeat(40) + '\n');
 
     return this.fcmService.sendPushNotification(
       notification.recipient,
@@ -229,20 +261,21 @@ export class NotificationService {
       throw new BadRequestException('Voice call recipient phone number is required');
     }
 
-    // Twilio temporarily disabled for N8N integration
-    /*
-    return this.twilioService.makeVoiceCall(
-      notification.recipient,
-      notification.message,
-      notification.priority,
-    );
-    */
-    return { success: true, message: 'Simulated N8N/Twilio handoff' };
+    console.log('\n' + '-'.repeat(40));
+    console.log(`📞 INITIATING ${notification.category === NotificationCategory.SOS_ALERT ? '🚨 EMERGENCY' : ''} VOICE CALL`);
+    console.log(`TO: ${notification.recipient}`);
+    console.log(`TEXT-TO-SPEECH: ${notification.message}`);
+    console.log('-'.repeat(40) + '\n');
+
+    return { success: true, message: 'Simulated N8N/Twilio handoff successful' };
   }
 
   private async sendEmailNotification(notification: Notification): Promise<any> {
-    // Email service would be implemented here
-    // For now, return a mock success
+    console.log('\n' + '-'.repeat(40));
+    console.log(`📧 SENDING EMAIL`);
+    console.log(`SUBJECT: ${notification.title}`);
+    console.log(`BODY: ${notification.message}`);
+    console.log('-'.repeat(40) + '\n');
     return { success: true, messageId: `email_${Date.now()}` };
   }
 

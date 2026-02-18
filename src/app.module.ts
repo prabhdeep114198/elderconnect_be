@@ -6,6 +6,11 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { CacheModule } from '@nestjs/cache-manager';
 import { APP_GUARD, APP_INTERCEPTOR, APP_FILTER } from '@nestjs/core';
 import { ThrottlerGuard } from '@nestjs/throttler';
+import { PrivacyModule } from "./privacy/privacy.module";
+import { PrivacyPolicy } from "./privacy/entities/privacy-policy.entity";
+import { VideoCallModule } from './videocall/videocall.module';
+import { VideoCallEntity } from './videocall/videocall.entity';
+
 
 // Configuration
 import {
@@ -32,6 +37,8 @@ import { ChatModule } from './chat/chat.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { FirebaseAdminModule } from './common/services/firebase-admin.module';
 import { MonitoringModule } from './monitoring/monitoring.module';
+import { VoiceModule } from './voice/voice.module';
+import { GraphModule } from './graph/graph.module';
 
 // Common interceptors
 import { AuditLogInterceptor } from './common/interceptors/audit-log.interceptor';
@@ -45,6 +52,9 @@ import { Medication } from './profile/entities/medication.entity';
 import { MedicationLog } from './profile/entities/medication-log.entity';
 import { DailyHealthMetric } from './profile/entities/daily-health-metric.entity';
 import { Appointment } from './profile/entities/appointment.entity';
+import { SocialEvent } from './profile/entities/social-event.entity';
+import { ReminderLog } from './profile/entities/reminder-log.entity';
+import { EmergencyRiskLog } from './profile/entities/emergency-risk-log.entity';
 import { TelemetryData } from './device/entities/telemetry.entity';
 import { Vitals } from './device/entities/vitals.entity';
 import { SOSAlert } from './device/entities/sos-alert.entity';
@@ -68,11 +78,13 @@ import { Subscription } from './subscriptions/entities/subscription.entity';
         firebaseConfig,
         throttleConfig,
         fileUploadConfig,
-        n8nConfig
+        n8nConfig,
+        
       ],
       envFilePath: ['.env.local', '.env'],
       validate: validateEnvironment,
     }),
+    PrivacyModule,
 
     // Rate limiting
     ThrottlerModule.forRoot([
@@ -111,11 +123,10 @@ import { Subscription } from './subscriptions/entities/subscription.entity';
         password: configService.get('database.auth.password'),
         database: configService.get('database.auth.database'),
         entities: [User, Device, Subscription],
-        synchronize: false, // NEVER use synchronize in production - use migrations
+        synchronize: false, // Set to false to prevent data loss and use migrations instead
         logging: configService.get('app.environment') === 'development',
-        ssl: configService.get('app.environment') === 'production'
-          ? { rejectUnauthorized: true } // Proper SSL validation in production
-          : false,
+  // Use the database config's SSL setting so env flags like requiring SSL are honored
+  ssl: configService.get('database.auth.ssl'),
         extra: { max: 20, idleTimeoutMillis: 30000, connectionTimeoutMillis: 2000 },
       }),
       inject: [ConfigService],
@@ -123,25 +134,32 @@ import { Subscription } from './subscriptions/entities/subscription.entity';
 
     // Profile Database
     TypeOrmModule.forRootAsync({
-      name: 'profile',
-      imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        type: 'postgres',
-        host: configService.get('database.profile.host'),
-        port: configService.get('database.profile.port'),
-        username: configService.get('database.profile.username'),
-        password: configService.get('database.profile.password'),
-        database: configService.get('database.profile.database'),
-        entities: [UserProfile, Medication, MedicationLog, DailyHealthMetric, Appointment],
-        synchronize: configService.get('app.environment') === 'development', // Enable sync in dev for rapid iteration
-        logging: configService.get('app.environment') === 'development',
-        ssl: configService.get('app.environment') === 'production'
-          ? { rejectUnauthorized: true } // Proper SSL validation in production
-          : false,
-        extra: { max: 20, idleTimeoutMillis: 30000, connectionTimeoutMillis: 2000 },
-      }),
-      inject: [ConfigService],
-    }),
+  name: 'profile',
+  imports: [ConfigModule],
+  useFactory: (configService: ConfigService) => ({
+    type: 'postgres',
+    host: configService.get('database.profile.host'),
+    port: configService.get('database.profile.port'),
+    username: configService.get('database.profile.username'),
+    password: configService.get('database.profile.password'),
+    database: configService.get('database.profile.database'),
+    entities: [
+      UserProfile,
+      Medication,
+      MedicationLog,
+      DailyHealthMetric,
+      Appointment,
+      SocialEvent,
+      ReminderLog,
+      EmergencyRiskLog,
+      VideoCallEntity, // ✅
+    ],
+    synchronize: true, // temporary, will auto-create tables
+    logging: configService.get('app.environment') === 'development',
+    ssl: configService.get('database.profile.ssl'),
+  }),
+  inject: [ConfigService],
+}),
 
     // Vitals Database
     TypeOrmModule.forRootAsync({
@@ -155,11 +173,9 @@ import { Subscription } from './subscriptions/entities/subscription.entity';
         password: configService.get('database.vitals.password'),
         database: configService.get('database.vitals.database'),
         entities: [TelemetryData, Vitals, SOSAlert],
-        synchronize: false, // NEVER use synchronize in production - use migrations
+        synchronize: false, // Set to false to prevent data loss and use migrations instead
         logging: configService.get('app.environment') === 'development',
-        ssl: configService.get('app.environment') === 'production'
-          ? { rejectUnauthorized: true } // Proper SSL validation in production
-          : false,
+  ssl: configService.get('database.vitals.ssl'),
         extra: { max: 30, idleTimeoutMillis: 30000, connectionTimeoutMillis: 2000 },
       }),
       inject: [ConfigService],
@@ -177,11 +193,9 @@ import { Subscription } from './subscriptions/entities/subscription.entity';
         password: configService.get('database.media.password'),
         database: configService.get('database.media.database'),
         entities: [MediaFile],
-        synchronize: false, // NEVER use synchronize in production - use migrations
+        synchronize: false, // Set to false to prevent data loss and use migrations instead
         logging: configService.get('app.environment') === 'development',
-        ssl: configService.get('app.environment') === 'production'
-          ? { rejectUnauthorized: true } // Proper SSL validation in production
-          : false,
+  ssl: configService.get('database.media.ssl'),
         extra: { max: 15, idleTimeoutMillis: 30000, connectionTimeoutMillis: 2000 },
       }),
       inject: [ConfigService],
@@ -198,12 +212,10 @@ import { Subscription } from './subscriptions/entities/subscription.entity';
         username: configService.get('database.audit.username'),
         password: configService.get('database.audit.password'),
         database: configService.get('database.audit.database'),
-        entities: [AuditLog, Notification, NotificationTemplate],
-        synchronize: false, // NEVER use synchronize in production - use migrations
+        entities: [AuditLog, Notification, NotificationTemplate,  PrivacyPolicy],
+        synchronize: false, // Set to false to prevent data loss and use migrations instead
         logging: configService.get('app.environment') === 'development',
-        ssl: configService.get('app.environment') === 'production'
-          ? { rejectUnauthorized: true } // Proper SSL validation in production
-          : false,
+  ssl: configService.get('database.audit.ssl'),
         extra: { max: 25, idleTimeoutMillis: 30000, connectionTimeoutMillis: 2000 },
       }),
       inject: [ConfigService],
@@ -220,6 +232,9 @@ import { Subscription } from './subscriptions/entities/subscription.entity';
     SubscriptionsModule,
     FirebaseAdminModule,
     MonitoringModule,
+    VoiceModule,
+    GraphModule,
+    VideoCallModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

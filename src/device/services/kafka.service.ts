@@ -40,6 +40,8 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
     notifications: 'elder-notifications',
   };
 
+  private notificationHandler: (data: any) => Promise<void>;
+
   constructor(private readonly configService: ConfigService) {
     // -----------------------------
     // Brokers setup
@@ -240,6 +242,10 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  setNotificationHandler(handler: (data: any) => Promise<void>) {
+    this.notificationHandler = handler;
+  }
+
   // -----------------------------
   // Consumer message handler
   // -----------------------------
@@ -291,8 +297,22 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async processAlertMessage(data: any, headers: any): Promise<void> {
-    this.logger.log(`Processing alert: ${data.type} for user ${data.userId}`);
+    const priority = (data.priority || 'medium').toUpperCase();
+    const alertType = (data.type || 'UNKNOWN_ALERT').toUpperCase();
+
     if (data.priority === 'critical' || data.priority === 'high') {
+      console.log('\n' + '='.repeat(80));
+      console.log(`🚨 [${priority}] EMERGENCY ALERT DETECTED 🚨`);
+      console.log(`TYPE: ${alertType}`);
+      console.log(`USER ID: ${data.userId}`);
+      console.log(`DESCRIPTION: ${data.description}`);
+      console.log(`TIMESTAMP: ${data.timestamp}`);
+      if (data.location) {
+        console.log(`LOCATION: ${data.location.latitude}, ${data.location.longitude}`);
+        if (data.location.address) console.log(`ADDRESS: ${data.location.address}`);
+      }
+      console.log('='.repeat(80) + '\n');
+
       await this.publishNotification(data.userId, {
         type: 'alert',
         title: 'Health Alert',
@@ -300,6 +320,8 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
         priority: data.priority,
         alertId: data.alertId,
       });
+    } else {
+      this.logger.log(`Processing alert: ${data.type} for user ${data.userId}`);
     }
   }
 
@@ -309,6 +331,9 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
 
   private async processNotificationMessage(data: any, headers: any): Promise<void> {
     this.logger.debug(`Processing notification for user ${data.userId}`);
+    if (this.notificationHandler) {
+      await this.notificationHandler(data);
+    }
   }
 
   private isAnomalousReading(data: TelemetryMessage): boolean {
