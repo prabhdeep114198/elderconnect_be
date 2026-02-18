@@ -24,10 +24,10 @@
     "migration:generate:vitals": "npm run typeorm -- migration:generate src/migrations/vitals/Migration -d src/config/data-source.ts",
     "migration:generate:media": "npm run typeorm -- migration:generate src/migrations/media/Migration -d src/config/data-source.ts",
     "migration:generate:audit": "npm run typeorm -- migration:generate src/migrations/audit/Migration -d src/config/data-source.ts",
-  "migration:run:auth": "npm run typeorm -- migration:run -d src/config/data-source.ts",
-  "migration:run:profile": "npm run typeorm -- migration:run -d src/config/data-source.ts",
-  "migration:run:all": "npm run migration:run:auth && npm run migration:run:profile",
-  "migration:revert:auth": "npm run typeorm -- migration:revert -d src/config/data-source.ts",
+    "migration:run:auth": "npm run typeorm -- migration:run -d src/config/data-source.ts",
+    "migration:run:profile": "npm run typeorm -- migration:run -d src/config/data-source.ts",
+    "migration:run:all": "npm run migration:run:auth && npm run migration:run:profile",
+    "migration:revert:auth": "npm run typeorm -- migration:revert -d src/config/data-source.ts",
     "prepare": "husky install"
   },
   "dependencies": {
@@ -42,10 +42,12 @@
     "@nestjs/microservices": "^11.1.8",
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.0.1",
+    "@nestjs/platform-socket.io": "^11.1.13",
     "@nestjs/schedule": "^6.0.1",
     "@nestjs/swagger": "^11.2.1",
     "@nestjs/throttler": "^6.4.0",
     "@nestjs/typeorm": "^11.0.0",
+    "@nestjs/websockets": "^11.1.13",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/sdk-node": "^0.208.0",
     "aws-sdk": "^2.1692.0",
@@ -78,9 +80,11 @@
     "redis": "^5.9.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
+    "socket.io": "^4.7.5",
     "swagger-ui-express": "^5.0.1",
     "twilio": "^5.10.4",
-    "typeorm": "^0.3.27"
+    "typeorm": "^0.3.27",
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
@@ -97,6 +101,7 @@
     "@types/passport-jwt": "^4.0.1",
     "@types/passport-local": "^1.0.38",
     "@types/pg": "^8.15.6",
+    "@types/socket.io": "^3.0.2",
     "@types/supertest": "^6.0.2",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",

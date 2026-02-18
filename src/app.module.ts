@@ -8,6 +8,10 @@ import { APP_GUARD, APP_INTERCEPTOR, APP_FILTER } from '@nestjs/core';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { PrivacyModule } from "./privacy/privacy.module";
 import { PrivacyPolicy } from "./privacy/entities/privacy-policy.entity";
+import { VideoCallModule } from './videocall/videocall.module';
+import { VideoCallEntity } from './videocall/videocall.entity';
+
+
 // Configuration
 import {
   appConfig,
@@ -74,7 +78,8 @@ import { Subscription } from './subscriptions/entities/subscription.entity';
         firebaseConfig,
         throttleConfig,
         fileUploadConfig,
-        n8nConfig
+        n8nConfig,
+        
       ],
       envFilePath: ['.env.local', '.env'],
       validate: validateEnvironment,
@@ -129,23 +134,32 @@ import { Subscription } from './subscriptions/entities/subscription.entity';
 
     // Profile Database
     TypeOrmModule.forRootAsync({
-      name: 'profile',
-      imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        type: 'postgres',
-        host: configService.get('database.profile.host'),
-        port: configService.get('database.profile.port'),
-        username: configService.get('database.profile.username'),
-        password: configService.get('database.profile.password'),
-        database: configService.get('database.profile.database'),
-        entities: [UserProfile, Medication, MedicationLog, DailyHealthMetric, Appointment, SocialEvent, ReminderLog, EmergencyRiskLog],
-        synchronize: false, // Set to false to prevent data loss and use migrations instead
-        logging: configService.get('app.environment') === 'development',
-  ssl: configService.get('database.profile.ssl'),
-        extra: { max: 20, idleTimeoutMillis: 30000, connectionTimeoutMillis: 2000 },
-      }),
-      inject: [ConfigService],
-    }),
+  name: 'profile',
+  imports: [ConfigModule],
+  useFactory: (configService: ConfigService) => ({
+    type: 'postgres',
+    host: configService.get('database.profile.host'),
+    port: configService.get('database.profile.port'),
+    username: configService.get('database.profile.username'),
+    password: configService.get('database.profile.password'),
+    database: configService.get('database.profile.database'),
+    entities: [
+      UserProfile,
+      Medication,
+      MedicationLog,
+      DailyHealthMetric,
+      Appointment,
+      SocialEvent,
+      ReminderLog,
+      EmergencyRiskLog,
+      VideoCallEntity, // ✅
+    ],
+    synchronize: true, // temporary, will auto-create tables
+    logging: configService.get('app.environment') === 'development',
+    ssl: configService.get('database.profile.ssl'),
+  }),
+  inject: [ConfigService],
+}),
 
     // Vitals Database
     TypeOrmModule.forRootAsync({
@@ -220,6 +234,7 @@ import { Subscription } from './subscriptions/entities/subscription.entity';
     MonitoringModule,
     VoiceModule,
     GraphModule,
+    VideoCallModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
