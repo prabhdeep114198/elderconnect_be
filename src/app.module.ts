@@ -6,6 +6,11 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { CacheModule } from '@nestjs/cache-manager';
 import { APP_GUARD, APP_INTERCEPTOR, APP_FILTER } from '@nestjs/core';
 import { ThrottlerGuard } from '@nestjs/throttler';
+import { PrivacyModule } from "./privacy/privacy.module";
+import { PrivacyPolicy } from "./privacy/entities/privacy-policy.entity";
+import { VideoCallModule } from './videocall/videocall.module';
+import { VideoCallEntity } from './videocall/videocall.entity';
+
 
 // Configuration
 import {
@@ -34,6 +39,8 @@ import { FirebaseAdminModule } from './common/services/firebase-admin.module';
 import { MonitoringModule } from './monitoring/monitoring.module';
 import { VoiceModule } from './voice/voice.module';
 import { GraphModule } from './graph/graph.module';
+import { CommonCacheModule } from './common/services/cache.module';
+import { PersonalizationModule } from './personalization/personalization.module';
 
 // Common interceptors
 import { AuditLogInterceptor } from './common/interceptors/audit-log.interceptor';
@@ -58,6 +65,7 @@ import { Notification } from './notification/entities/notification.entity';
 import { NotificationTemplate } from './notification/entities/notification-template.entity';
 import { AuditLog } from './common/services/entities/audit-log.entity';
 import { Subscription } from './subscriptions/entities/subscription.entity';
+import { UserInteraction } from './personalization/entities/user-interaction.entity';
 
 @Module({
   imports: [
@@ -73,11 +81,13 @@ import { Subscription } from './subscriptions/entities/subscription.entity';
         firebaseConfig,
         throttleConfig,
         fileUploadConfig,
-        n8nConfig
+        n8nConfig,
+
       ],
       envFilePath: ['.env.local', '.env'],
       validate: validateEnvironment,
     }),
+    PrivacyModule,
 
     // Rate limiting
     ThrottlerModule.forRoot([
@@ -118,8 +128,8 @@ import { Subscription } from './subscriptions/entities/subscription.entity';
         entities: [User, Device, Subscription],
         synchronize: false, // Set to false to prevent data loss and use migrations instead
         logging: configService.get('app.environment') === 'development',
-  // Use the database config's SSL setting so env flags like requiring SSL are honored
-  ssl: configService.get('database.auth.ssl'),
+        // Use the database config's SSL setting so env flags like requiring SSL are honored
+        ssl: configService.get('database.auth.ssl'),
         extra: { max: 20, idleTimeoutMillis: 30000, connectionTimeoutMillis: 2000 },
       }),
       inject: [ConfigService],
@@ -136,11 +146,20 @@ import { Subscription } from './subscriptions/entities/subscription.entity';
         username: configService.get('database.profile.username'),
         password: configService.get('database.profile.password'),
         database: configService.get('database.profile.database'),
-        entities: [UserProfile, Medication, MedicationLog, DailyHealthMetric, Appointment, SocialEvent, ReminderLog, EmergencyRiskLog],
-        synchronize: false, // Set to false to prevent data loss and use migrations instead
+        entities: [
+          UserProfile,
+          Medication,
+          MedicationLog,
+          DailyHealthMetric,
+          Appointment,
+          SocialEvent,
+          ReminderLog,
+          EmergencyRiskLog,
+          VideoCallEntity, // ✅
+        ],
+        synchronize: true, // temporary, will auto-create tables
         logging: configService.get('app.environment') === 'development',
-  ssl: configService.get('database.profile.ssl'),
-        extra: { max: 20, idleTimeoutMillis: 30000, connectionTimeoutMillis: 2000 },
+        ssl: configService.get('database.profile.ssl'),
       }),
       inject: [ConfigService],
     }),
@@ -159,7 +178,7 @@ import { Subscription } from './subscriptions/entities/subscription.entity';
         entities: [TelemetryData, Vitals, SOSAlert],
         synchronize: false, // Set to false to prevent data loss and use migrations instead
         logging: configService.get('app.environment') === 'development',
-  ssl: configService.get('database.vitals.ssl'),
+        ssl: configService.get('database.vitals.ssl'),
         extra: { max: 30, idleTimeoutMillis: 30000, connectionTimeoutMillis: 2000 },
       }),
       inject: [ConfigService],
@@ -179,7 +198,7 @@ import { Subscription } from './subscriptions/entities/subscription.entity';
         entities: [MediaFile],
         synchronize: false, // Set to false to prevent data loss and use migrations instead
         logging: configService.get('app.environment') === 'development',
-  ssl: configService.get('database.media.ssl'),
+        ssl: configService.get('database.media.ssl'),
         extra: { max: 15, idleTimeoutMillis: 30000, connectionTimeoutMillis: 2000 },
       }),
       inject: [ConfigService],
@@ -196,10 +215,10 @@ import { Subscription } from './subscriptions/entities/subscription.entity';
         username: configService.get('database.audit.username'),
         password: configService.get('database.audit.password'),
         database: configService.get('database.audit.database'),
-        entities: [AuditLog, Notification, NotificationTemplate],
+        entities: [AuditLog, Notification, NotificationTemplate, PrivacyPolicy],
         synchronize: false, // Set to false to prevent data loss and use migrations instead
         logging: configService.get('app.environment') === 'development',
-  ssl: configService.get('database.audit.ssl'),
+        ssl: configService.get('database.audit.ssl'),
         extra: { max: 25, idleTimeoutMillis: 30000, connectionTimeoutMillis: 2000 },
       }),
       inject: [ConfigService],
@@ -218,6 +237,9 @@ import { Subscription } from './subscriptions/entities/subscription.entity';
     MonitoringModule,
     VoiceModule,
     GraphModule,
+    VideoCallModule,
+    CommonCacheModule,
+    PersonalizationModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

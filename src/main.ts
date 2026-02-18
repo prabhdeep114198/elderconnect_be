@@ -6,6 +6,7 @@ import { AppModule } from './app.module';
 import compression from 'compression';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
+import { getMetadataArgsStorage } from 'typeorm';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -19,9 +20,11 @@ async function bootstrap() {
   const environment = configService.get<string>('app.environment', 'development');
 
   // Security middleware
-  app.use(helmet({
-    contentSecurityPolicy: environment === 'production' ? undefined : false,
-  }));
+  app.use(
+    helmet({
+      contentSecurityPolicy: environment === 'production' ? undefined : false,
+    }),
+  );
 
   // Compression middleware
   app.use(compression());
@@ -31,9 +34,10 @@ async function bootstrap() {
 
   // CORS configuration
   app.enableCors({
-    origin: environment === 'production'
-      ? configService.get<string[]>('app.allowedOrigins', [])
-      : true,
+    origin:
+      environment === 'production'
+        ? configService.get<string[]>('app.allowedOrigins', [])
+        : true,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-API-KEY'],
@@ -92,6 +96,11 @@ async function bootstrap() {
     logger.log(`Swagger documentation available at http://localhost:${port}/api/docs`);
   }
 
+  // 🔹 Debug: print all registered TypeORM entities
+  logger.log(
+    'Registered TypeORM entities: ' +
+      getMetadataArgsStorage().tables.map((t) => t.target.toString()).join(', '),
+  );
 
   // Graceful shutdown
   process.on('SIGTERM', async () => {
