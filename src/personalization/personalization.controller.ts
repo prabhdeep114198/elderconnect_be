@@ -38,4 +38,16 @@ export class PersonalizationController {
             data: result,
         };
     }
+
+    @Get('chatbot-context')
+    @ApiOperation({ summary: 'Get enriched user context for AI Chatbot personalization (n8n)' })
+    @ApiResponse({ status: 200, description: 'User context for chatbot retrieved' })
+    async getChatbotContext(@CurrentUser() user: any) {
+        this.logger.log(`Fetching chatbot context for user ${user.id}`);
+        const context = await this.personalizationService.getChatbotContext(user.id);
+        return {
+            message: 'Chatbot context retrieved successfully',
+            data: context,
+        };
+    }
 }

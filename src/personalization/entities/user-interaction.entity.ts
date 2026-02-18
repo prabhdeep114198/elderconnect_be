@@ -7,6 +7,10 @@ export enum InteractionType {
     FEATURE_USE = 'feature_use',
     MOOD_LOG = 'mood_log',
     CONTENT_VIEW = 'content_view',
+    CONTENT_DISMISS = 'content_dismiss',
+    ACTIVITY_START = 'activity_start',
+    ACTIVITY_COMPLETE = 'activity_complete',
+    APP_SESSION = 'app_session',
 }
 
 @Entity('user_interactions')

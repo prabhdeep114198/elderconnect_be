@@ -52,5 +52,34 @@ export class Recommendation {
     score?: number;
 
     @ApiPropertyOptional()
+    safetyWarnings?: string[];
+
+    @ApiPropertyOptional()
     metadata?: Record<string, any>;
+}
+
+export class UserChatContextDto {
+    @ApiProperty()
+    userId: string;
+
+    @ApiProperty()
+    profileSummary: {
+        conditions: string[];
+        allergies: string[];
+        hobbies: string[];
+    };
+
+    @ApiProperty()
+    healthStatus: {
+        physicalScore: number;
+        mentalScore: number;
+        riskLevel: string;
+        recentAlerts: number;
+    };
+
+    @ApiProperty()
+    engagementLevel: 'low' | 'medium' | 'high';
+
+    @ApiProperty()
+    primaryConcerns: string[];
 }
