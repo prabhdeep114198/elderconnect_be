@@ -6,16 +6,17 @@ import { MetricsService } from './metrics.service';
 
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DailyHealthMetric } from '../profile/entities/daily-health-metric.entity';
-import { CacheModule } from '@nestjs/cache-manager';
-import { HealthAnalyticsService } from './analytics.service';
-import { AnalyticsController } from './analytics.controller';
 import { ProfileModule } from '../profile/profile.module';
+import { AnalyticsController } from './analytics.controller';
+import { HealthAnalyticsService } from './analytics.service';
+import { DebugController } from './debug.controller';
 
+import { SOSAlert } from '../device/entities/sos-alert.entity';
+import { TelemetryData } from '../device/entities/telemetry.entity';
+import { MediaFile } from '../media/entities/media-file.entity';
 import { Appointment } from '../profile/entities/appointment.entity';
 import { MedicationLog } from '../profile/entities/medication-log.entity';
-import { MediaFile } from '../media/entities/media-file.entity';
-import { TelemetryData } from '../device/entities/telemetry.entity';
-import { SOSAlert } from '../device/entities/sos-alert.entity';
+import { Medication } from '../profile/entities/medication.entity';
 
 @Module({
   imports: [
@@ -23,14 +24,18 @@ import { SOSAlert } from '../device/entities/sos-alert.entity';
       DailyHealthMetric,
       Appointment,
       MedicationLog,
-      MediaFile,
+      Medication,
+    ], 'profile'),
+    TypeOrmModule.forFeature([
+      MediaFile
+    ], 'media'),
+    TypeOrmModule.forFeature([
       TelemetryData,
       SOSAlert
-    ]),
-    CacheModule,
+    ], 'vitals'),
     ProfileModule,
   ],
-  controllers: [HealthController, AnalyticsController],
+  controllers: [HealthController, AnalyticsController, DebugController],
   providers: [HealthService, MetricsService, HealthAnalyticsService],
   exports: [HealthService, MetricsService, HealthAnalyticsService],
 })

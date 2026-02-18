@@ -1,15 +1,17 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { format, subDays, subMonths, subWeeks, subYears } from 'date-fns';
 import { Repository } from 'typeorm';
-import { DailyHealthMetric } from '../profile/entities/daily-health-metric.entity';
-import { Appointment } from '../profile/entities/appointment.entity';
-import { MedicationLog } from '../profile/entities/medication-log.entity';
-import { MediaFile } from '../media/entities/media-file.entity';
-import { TelemetryData } from '../device/entities/telemetry.entity';
-import { SOSAlert } from '../device/entities/sos-alert.entity';
-import { AnalyticsQueryDto, TimeGranularity, MetricType } from './dto/analytics-query.dto';
-import { subDays, subWeeks, subMonths, subYears, format } from 'date-fns';
 import { CacheService } from '../common/services/cache.service';
+import { SOSAlert } from '../device/entities/sos-alert.entity';
+import { TelemetryData } from '../device/entities/telemetry.entity';
+import { MediaFile } from '../media/entities/media-file.entity';
+import { Appointment } from '../profile/entities/appointment.entity';
+import { DailyHealthMetric } from '../profile/entities/daily-health-metric.entity';
+import { MedicationLog, MedicationLogStatus } from '../profile/entities/medication-log.entity';
+import { Medication } from '../profile/entities/medication.entity';
+
+import { AnalyticsQueryDto, TimeGranularity } from './dto/analytics-query.dto';
 
 export interface HealthAnalytics {
     timeSeries: any[];
@@ -23,39 +25,110 @@ export class HealthAnalyticsService {
     private readonly logger = new Logger(HealthAnalyticsService.name);
 
     constructor(
-        @InjectRepository(DailyHealthMetric)
+        @InjectRepository(DailyHealthMetric, 'profile')
         private healthMetricRepository: Repository<DailyHealthMetric>,
-        @InjectRepository(Appointment)
+        @InjectRepository(Appointment, 'profile')
         private appointmentRepository: Repository<Appointment>,
-        @InjectRepository(MedicationLog)
+        @InjectRepository(Medication, 'profile')
+        private medicationRepository: Repository<Medication>,
+
+        @InjectRepository(MedicationLog, 'profile')
         private medicationLogRepository: Repository<MedicationLog>,
-        @InjectRepository(MediaFile)
+        @InjectRepository(MediaFile, 'media')
         private mediaFileRepository: Repository<MediaFile>,
-        @InjectRepository(TelemetryData)
+        @InjectRepository(TelemetryData, 'vitals')
         private telemetryRepository: Repository<TelemetryData>,
-        @InjectRepository(SOSAlert)
+        @InjectRepository(SOSAlert, 'vitals')
         private sosAlertRepository: Repository<SOSAlert>,
         private cacheService: CacheService,
     ) { }
 
+    async seedData(userProfileId: string): Promise<any> {
+        this.logger.log(`Seeding analytics data for user ${userProfileId}`);
+
+        // Remove existing metrics for this user to avoid conflicts
+        await this.healthMetricRepository.delete({ userProfileId });
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const metrics: DailyHealthMetric[] = [];
+        for (let i = 0; i < 60; i++) {
+            const date = subDays(today, i);
+
+            const metric = this.healthMetricRepository.create({
+                userProfileId,
+                date,
+                steps: Math.floor(Math.random() * 8000) + 2000,
+                heartRate: Math.floor(Math.random() * 30) + 65,
+                sleepHours: Math.floor(Math.random() * 4) + 6,
+                waterIntake: Math.floor(Math.random() * 1000) + 1500,
+            });
+            metrics.push(metric);
+        }
+
+        await this.healthMetricRepository.save(metrics);
+        this.logger.log(`Saved ${metrics.length} health metrics for profile ${userProfileId}`);
+
+        // Seed some medication logs if none exist
+        const medications = await this.medicationRepository.find({ where: { userProfileId } });
+        if (medications.length > 0) {
+            const logs: MedicationLog[] = [];
+            for (const med of medications) {
+                for (let i = 0; i < 20; i++) {
+                    const scheduledTime = subDays(today, i);
+                    scheduledTime.setHours(9, 0, 0, 0);
+
+                    const log = this.medicationLogRepository.create({
+                        medicationId: med.id,
+                        scheduledTime,
+                        actualTime: Math.random() > 0.1 ? new Date(scheduledTime.getTime() + Math.random() * 600000) : undefined,
+                        status: Math.random() > 0.1 ? MedicationLogStatus.TAKEN : MedicationLogStatus.MISSED,
+                        dosageTaken: med.dosage
+                    });
+                    logs.push(log);
+                }
+            }
+            await this.medicationLogRepository.save(logs);
+            this.logger.log(`Saved ${logs.length} medication logs for profile ${userProfileId}`);
+        }
+
+        this.logger.log(`Successfully completed seeding for user profile: ${userProfileId}`);
+
+        // Clear cache for this user
+        await this.cacheService.delPattern(`health_analytics:${userProfileId}*`);
+
+        return {
+            count: metrics.length,
+            userProfileId
+        };
+    }
+
     async getHealthAnalytics(
+        userId: string,
         userProfileId: string,
         query: AnalyticsQueryDto,
-    ): Promise<HealthAnalytics> {
-        const cacheKey = `health_analytics:${userProfileId}:${JSON.stringify(query)}`;
+    ): Promise<any> {
+        const cacheKey = `health_analytics:${userProfileId}:${Object.values(query).join('_')}`;
 
         // Try cache
-        const cached = await this.cacheService.get<HealthAnalytics>(cacheKey);
+        const cached = await this.cacheService.get<any>(cacheKey);
         if (cached) {
+            this.logger.log(`Analytics CACHE HIT for profile ${userProfileId}`);
             return cached;
         }
 
         const { startDate, endDate } = this.getDateRange(query);
+        this.logger.log(`Analytics request for profile: ${userProfileId}, range: ${startDate.toISOString()} to ${endDate.toISOString()}, granularity: ${query.granularity}`);
 
-        const [timeSeries, statistics] = await Promise.all([
+        const [timeSeries, statistics, medication, safety] = await Promise.all([
             this.getTimeSeriesData(userProfileId, startDate, endDate, query.granularity),
             this.getStatistics(userProfileId, startDate, endDate),
+            this.getMedicationAdherence(userProfileId, startDate, endDate),
+            this.getSafetyStatus(userId),
         ]);
+
+        this.logger.log(`Analytics results: ${timeSeries.length} TS points, activeDays: ${statistics.activeDays}`);
 
         const trends = this.calculateTrends(timeSeries);
         const insights = this.generateInsights(statistics, trends);
@@ -65,12 +138,85 @@ export class HealthAnalyticsService {
             statistics,
             trends,
             insights,
+            medication,
+            safety,
+            social: {
+                engagementScore: 85, // Mocked for now
+                trend: 'stable'
+            }
         };
 
         // Cache for 5 minutes
         await this.cacheService.set(cacheKey, result, { ttl: 300 });
 
         return result;
+    }
+
+    async getWellnessProfile(userId: string, userProfileId: string): Promise<any> {
+        const now = new Date();
+        const thirtyDaysAgo = subDays(now, 30);
+
+        const [stats, compliance] = await Promise.all([
+            this.getStatistics(userProfileId, thirtyDaysAgo, now),
+            this.getMedicationAdherence(userProfileId, thirtyDaysAgo, now),
+        ]);
+
+        // Calculate Scores (0-100 scale)
+        const sleepScore = Math.min(100, Math.round((stats.sleep.avg / 8) * 100)) || 0;
+        const exerciseScore = Math.min(100, Math.round((stats.steps.avg / 8000) * 100)) || 0;
+        const dietScore = Math.min(100, Math.round((stats.water.avg / 2000) * 100)) || 0;
+        const socialScore = 85;
+        const mentalScore = stats.heartRate.avg > 60 && stats.heartRate.avg < 100 ? 80 : 60;
+        const physicalScore = Math.round((sleepScore + exerciseScore + dietScore) / 3) || 70;
+
+        return {
+            physicalScore,
+            mentalScore,
+            sleepScore,
+            socialScore,
+            dietScore,
+            exerciseScore,
+            medicationAdherence: compliance.adherenceRate,
+            activeDays: stats.activeDays,
+            riskLevel: physicalScore < 50 ? 'high' : physicalScore < 75 ? 'medium' : 'low'
+        };
+    }
+
+    private async getMedicationAdherence(userProfileId: string, startDate: Date, endDate: Date): Promise<any> {
+        const logs = await this.medicationLogRepository
+            .createQueryBuilder('log')
+            .innerJoin('log.medication', 'medication')
+            .where('medication.userProfileId = :userProfileId', { userProfileId })
+            .andWhere('log.scheduledTime BETWEEN :startDate AND :endDate', { startDate, endDate })
+            .getMany();
+
+        if (logs.length === 0) return { adherenceRate: 100, total: 0, taken: 0 };
+
+        const taken = logs.filter(l => l.status === MedicationLogStatus.TAKEN).length;
+        const adherenceRate = Math.round((taken / logs.length) * 100);
+
+        return {
+            adherenceRate,
+            total: logs.length,
+            taken,
+            missed: logs.length - taken
+        };
+    }
+
+    private async getSafetyStatus(userId: string): Promise<any> {
+        const latestAlert = await this.sosAlertRepository.findOne({
+            where: { userId },
+            order: { createdAt: 'DESC' }
+        });
+
+        if (!latestAlert) return { status: 'safe', lastAlert: null };
+
+        const isRecent = new Date().getTime() - new Date(latestAlert.createdAt).getTime() < 24 * 60 * 60 * 1000;
+
+        return {
+            status: isRecent ? 'warning' : 'safe',
+            lastAlert: latestAlert.createdAt
+        };
     }
 
     private getDateRange(query: AnalyticsQueryDto): { startDate: Date; endDate: Date } {
@@ -80,24 +226,26 @@ export class HealthAnalyticsService {
         if (query.startDate) {
             startDate = new Date(query.startDate);
         } else {
+            const days = query.days || (query.granularity === TimeGranularity.DAY ? 7 : 30);
             switch (query.granularity) {
                 case TimeGranularity.DAY:
-                    startDate = subDays(endDate, query.days || 30);
+                    startDate = subDays(endDate, days);
                     break;
                 case TimeGranularity.WEEK:
-                    startDate = subWeeks(endDate, query.days || 12);
+                    startDate = subWeeks(endDate, days);
                     break;
                 case TimeGranularity.MONTH:
-                    startDate = subMonths(endDate, query.days || 12);
+                    startDate = subMonths(endDate, days);
                     break;
                 case TimeGranularity.YEAR:
-                    startDate = subYears(endDate, query.days || 5);
+                    startDate = subYears(endDate, days);
                     break;
                 default:
                     startDate = subDays(endDate, 30);
             }
         }
 
+        startDate.setHours(0, 0, 0, 0);
         return { startDate, endDate };
     }
 
@@ -116,7 +264,7 @@ export class HealthAnalyticsService {
                 groupByClause = "DATE(date)";
                 break;
             case TimeGranularity.WEEK:
-                dateFormat = 'yyyy-ww'; // Corrected format for ISO week
+                dateFormat = 'yyyy-ww';
                 groupByClause = "DATE_TRUNC('week', date)";
                 break;
             case TimeGranularity.MONTH:
@@ -143,10 +291,8 @@ export class HealthAnalyticsService {
         AVG("sleepHours")::numeric(4,2) as avg_sleep,
         MIN("sleepHours") as min_sleep,
         MAX("sleepHours") as max_sleep,
-        AVG("waterIntake")::numeric(5,2) as avg_water,
-        COUNT(*) as measurement_count,
-        STDDEV("heartRate")::numeric(10,2) as stddev_heart_rate,
-        STDDEV(steps)::numeric(10,2) as stddev_steps
+        AVG("waterIntake")::numeric(10,2) as avg_water,
+        COUNT(*) as measurement_count
       FROM daily_health_metrics
       WHERE "userProfileId" = $1
         AND date >= $2
@@ -161,18 +307,19 @@ export class HealthAnalyticsService {
             endDate,
         ]);
 
+        this.logger.log(`Found ${results.length} time series records for profile ${userProfileId}`);
+
         return results.map((row) => ({
-            period: format(new Date(row.period), dateFormat),
+            period: row.period instanceof Date ? format(row.period, dateFormat) : format(new Date(row.period), dateFormat),
+            date: row.period,
             heartRate: {
                 avg: parseFloat(row.avg_heart_rate || 0),
-                min: row.min_heart_rate,
-                max: row.max_heart_rate,
-                stddev: parseFloat(row.stddev_heart_rate || 0),
+                min: parseInt(row.min_heart_rate || 0),
+                max: parseInt(row.max_heart_rate || 0),
             },
             steps: {
                 avg: parseFloat(row.avg_steps || 0),
                 total: parseInt(row.total_steps || 0),
-                stddev: parseFloat(row.stddev_steps || 0),
             },
             sleep: {
                 avg: parseFloat(row.avg_sleep || 0),
@@ -182,7 +329,7 @@ export class HealthAnalyticsService {
             water: {
                 avg: parseFloat(row.avg_water || 0),
             },
-            measurementCount: parseInt(row.measurement_count),
+            measurementCount: parseInt(row.measurement_count || 0),
         }));
     }
 
@@ -210,7 +357,7 @@ export class HealthAnalyticsService {
         MAX("sleepHours") as max_sleep,
         PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY "sleepHours") as median_sleep,
         
-        AVG("waterIntake")::numeric(5,2) as avg_water,
+        AVG("waterIntake")::numeric(10,2) as avg_water,
         SUM("waterIntake") as total_water,
         
         COUNT(*) as total_measurements,
@@ -268,8 +415,11 @@ export class HealthAnalyticsService {
         }
 
         const calculateTrend = (data: number[]) => {
-            const recent = data.slice(-7).reduce((a, b) => a + b, 0) / Math.min(7, data.length);
+            const recent = data.slice(-7).reduce((a, b) => a + b, 0) / Math.max(1, Math.min(7, data.length));
             const previous = data.slice(0, -7).reduce((a, b) => a + b, 0) / Math.max(1, data.length - 7);
+
+            if (previous === 0) return { trend: recent > 0 ? 'increasing' : 'stable', change: 0, recent, previous };
+
             const change = ((recent - previous) / previous) * 100;
 
             return {
