@@ -64,6 +64,9 @@ export class DeviceService {
 
     const savedTelemetry = await this.telemetryRepository.save(telemetry);
 
+    // Check for anomalies and trigger SOS if needed
+    await this.checkForAnomaly(savedTelemetry);
+
     // Publish to Kafka for real-time processing
     await this.kafkaService.publishTelemetry({
       userId,
@@ -480,6 +483,65 @@ export class DeviceService {
       latestReadings,
       healthScore: this.calculateDeviceHealthScore(recentTelemetry, recentAlerts),
     };
+  }
+
+  private async checkForAnomaly(telemetry: TelemetryData): Promise<void> {
+    const { userId, metricType, value } = telemetry;
+    let anomalyDetected = false;
+    let alertDescription = '';
+    let alertContext: Record<string, any> = {};
+
+    // Simple rule-based anomaly detection
+    // In a real system, this would be more sophisticated or configurable per user
+    if (metricType === 'heart_rate') {
+      const bpm = value.bpm || value.value; // Handle different payload structures
+      if (bpm > 120) {
+        anomalyDetected = true;
+        alertDescription = `High Heart Rate detected: ${bpm} BPM`;
+        alertContext = { bpm, threshold: 120, condition: 'gt' };
+      } else if (bpm < 40 && bpm > 0) {
+        anomalyDetected = true;
+        alertDescription = `Low Heart Rate detected: ${bpm} BPM`;
+        alertContext = { bpm, threshold: 40, condition: 'lt' };
+      }
+    } else if (metricType === 'oxygen_saturation') {
+      const spo2 = value.spo2 || value.value;
+      if (spo2 < 90) {
+        anomalyDetected = true;
+        alertDescription = `Low Oxygen Saturation detected: ${spo2}%`;
+        alertContext = { spo2, threshold: 90, condition: 'lt' };
+      }
+    } else if (metricType === 'fall_detection' || value.event === 'fall') {
+      anomalyDetected = true;
+      alertDescription = 'Fall detected by device';
+      alertContext = { confidence: value.confidence || 1.0 };
+    }
+
+    if (anomalyDetected) {
+      // Determine SOS type
+      let sosType: SOSType = SOSType.MANUAL;
+      if (metricType === 'fall_detection') {
+        sosType = SOSType.FALL_DETECTION;
+      } else if (metricType === 'heart_rate') {
+        sosType = SOSType.HEART_RATE_ANOMALY;
+      }
+
+      // Create SOS alert
+      // This will automatically trigger notification delivery via createSOSAlert -> Kafka -> Notification Service
+      await this.createSOSAlert(userId, {
+        type: sosType,
+        description: alertDescription,
+        priority: AlertPriority.CRITICAL,
+        contextData: {
+          ...alertContext,
+          telemetryId: telemetry.id,
+          source: 'telemetry_anomaly_detection',
+        },
+        latitude: telemetry.latitude,
+        longitude: telemetry.longitude,
+        address: telemetry.location,
+      });
+    }
   }
 
   private calculateDeviceHealthScore(telemetry: TelemetryData[], alerts: SOSAlert[]): number {
