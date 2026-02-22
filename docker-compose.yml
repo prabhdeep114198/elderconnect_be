@@ -168,6 +168,20 @@ services:
     volumes:
       - ./logs:/app/logs
 
+  # ML Fall Risk Prediction Engine
+  ml-engine:
+    build:
+      context: ./ml-engine
+      dockerfile: Dockerfile
+    container_name: elder-ml-engine
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./ml-engine/data:/app/data
+    networks:
+      - elder-network
+    restart: always
+
 volumes:
   postgres_auth_data:
   postgres_profile_data:

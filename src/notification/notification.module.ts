@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ScheduleModule } from '@nestjs/schedule';
 import { NotificationController } from './notification.controller';
@@ -15,7 +15,7 @@ import { AuditLogModule } from '../common/services/audit-log.module';
   imports: [
     TypeOrmModule.forFeature([Notification, NotificationTemplate], 'audit'),
     AuditLogModule,
-    DeviceModule,
+    forwardRef(() => DeviceModule),
     ScheduleModule.forRoot(),
   ],
   controllers: [NotificationController],

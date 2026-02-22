@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+pydantic
+scikit-learn
+pandas
+numpy
+torch
+joblib
+python-multipart
+python-dotenv
+prom-client
