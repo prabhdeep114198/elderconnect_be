@@ -156,6 +156,7 @@ import { UserInteraction } from './personalization/entities/user-interaction.ent
           ReminderLog,
           EmergencyRiskLog,
           VideoCallEntity,
+          UserInteraction,
         ],
         synchronize: true, // temporary, will auto-create tables
         logging: configService.get('app.environment') === 'development',

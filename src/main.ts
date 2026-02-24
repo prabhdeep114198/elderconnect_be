@@ -10,6 +10,7 @@ import { getMetadataArgsStorage } from 'typeorm';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
+  logger.log('Bootstrapping Elder Connect API...');
 
   const app = await NestFactory.create(AppModule, {
     logger: ['error', 'warn', 'log', 'debug', 'verbose'],
