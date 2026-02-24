@@ -126,7 +126,7 @@ import { UserInteraction } from './personalization/entities/user-interaction.ent
         password: configService.get('database.auth.password'),
         database: configService.get('database.auth.database'),
         entities: [User, Device, Subscription],
-        synchronize: false, // Set to false to prevent data loss and use migrations instead
+        synchronize: true, // Enabled to auto-create missing columns like 'avatar'
         logging: configService.get('app.environment') === 'development',
         // Use the database config's SSL setting so env flags like requiring SSL are honored
         ssl: configService.get('database.auth.ssl'),
@@ -155,7 +155,7 @@ import { UserInteraction } from './personalization/entities/user-interaction.ent
           SocialEvent,
           ReminderLog,
           EmergencyRiskLog,
-          VideoCallEntity, // ✅
+          VideoCallEntity,
         ],
         synchronize: true, // temporary, will auto-create tables
         logging: configService.get('app.environment') === 'development',

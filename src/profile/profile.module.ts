@@ -14,10 +14,13 @@ import { EmergencyPredictionService } from './services/emergency-prediction.serv
 import { EmergencyRiskLog } from './entities/emergency-risk-log.entity';
 import { ReminderLog } from './entities/reminder-log.entity';
 import { NotificationModule } from '../notification/notification.module';
+import { User } from '../auth/entities/user.entity';
+import { CommonCacheModule } from '../common/services/cache.module';
 
 @Module({
   imports: [
     NotificationModule,
+    CommonCacheModule,
     TypeOrmModule.forFeature([
       UserProfile,
       Medication,
@@ -28,6 +31,7 @@ import { NotificationModule } from '../notification/notification.module';
       EmergencyRiskLog,
       ReminderLog,
     ], 'profile'),
+    TypeOrmModule.forFeature([User], 'auth'),
     TypeOrmModule.forFeature([AuditLog], 'audit'),
   ],
   controllers: [ProfileController],

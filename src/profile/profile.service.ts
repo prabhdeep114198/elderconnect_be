@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between } from 'typeorm';
+import { CacheService } from '../common/services/cache.service';
 import { UserProfile } from './entities/user-profile.entity';
 import { Medication } from './entities/medication.entity';
 import { MedicationLog, MedicationLogStatus } from './entities/medication-log.entity';
@@ -16,6 +17,7 @@ import { Appointment } from './entities/appointment.entity';
 import { CreateAppointmentDto, UpdateAppointmentDto } from './dto/appointment.dto';
 import { SocialEvent } from './entities/social-event.entity';
 import { UpdateHealthMetricDto } from './dto/update-health-metric.dto';
+import { User } from '../auth/entities/user.entity';
 
 @Injectable()
 export class ProfileService {
@@ -32,6 +34,9 @@ export class ProfileService {
     private readonly appointmentRepository: Repository<Appointment>,
     @InjectRepository(SocialEvent, 'profile')
     private readonly socialEventRepository: Repository<SocialEvent>,
+    @InjectRepository(User, 'auth')
+    private readonly userRepository: Repository<User>,
+    private readonly cacheService: CacheService,
   ) { }
 
   // Profile Management
@@ -76,6 +81,19 @@ export class ProfileService {
   async updateProfile(userId: string, updateProfileDto: UpdateProfileDto): Promise<UserProfile> {
     const profile = await this.getProfile(userId);
 
+    if (updateProfileDto.avatar || updateProfileDto.name) {
+      const userUpdate: any = {};
+      if (updateProfileDto.avatar) userUpdate.avatar = updateProfileDto.avatar;
+
+      if (updateProfileDto.name) {
+        const parts = updateProfileDto.name.split(' ');
+        userUpdate.firstName = parts[0];
+        userUpdate.lastName = parts.slice(1).join(' ') || '';
+      }
+
+      await this.userRepository.update(userId, userUpdate);
+    }
+
     Object.assign(profile, {
       ...updateProfileDto,
       height: updateProfileDto.height ?? updateProfileDto.heightCm ?? profile.height,
@@ -83,7 +101,12 @@ export class ProfileService {
       dateOfBirth: updateProfileDto.dateOfBirth ? new Date(updateProfileDto.dateOfBirth) : profile.dateOfBirth,
     });
 
-    return this.profileRepository.save(profile);
+    const savedProfile = await this.profileRepository.save(profile);
+
+    // Invalidate user cache to ensure session refreshes correctly
+    await this.cacheService.invalidateUserCache(userId);
+
+    return savedProfile;
   }
 
   async deleteProfile(userId: string): Promise<void> {

@@ -99,7 +99,7 @@ async function bootstrap() {
   // 🔹 Debug: print all registered TypeORM entities
   logger.log(
     'Registered TypeORM entities: ' +
-      getMetadataArgsStorage().tables.map((t) => t.target.toString()).join(', '),
+    getMetadataArgsStorage().tables.map((t) => t.target.toString()).join(', '),
   );
 
   // Graceful shutdown

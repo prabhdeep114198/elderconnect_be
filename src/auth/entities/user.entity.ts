@@ -82,6 +82,9 @@ export class User {
   @Column({ type: 'jsonb', nullable: true })
   preferences: Record<string, any>;
 
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  avatar: string;
+
   @CreateDateColumn()
   createdAt: Date;
 

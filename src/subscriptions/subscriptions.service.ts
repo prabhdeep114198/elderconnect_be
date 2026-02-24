@@ -9,6 +9,7 @@ import { Subscription, SubscriptionStatus } from './entities/subscription.entity
 import { User } from '../auth/entities/user.entity';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { VerifyPaymentDto } from './dto/verify-payment.dto';
+import { CacheService } from '../common/services/cache.service';
 
 @Injectable()
 export class SubscriptionsService {
@@ -22,6 +23,7 @@ export class SubscriptionsService {
         @InjectRepository(User, 'auth')
         private userRepository: Repository<User>,
         private configService: ConfigService,
+        private cacheService: CacheService,
     ) {
         const keyId = this.configService.get<string>('RAZORPAY_KEY_ID');
         const keySecret = this.configService.get<string>('RAZORPAY_KEY_SECRET');
@@ -276,6 +278,9 @@ export class SubscriptionsService {
 
             // Sync with Flagsmith Traits
             await this.syncFlagsmithTraits(user);
+
+            // Invalidate user cache to ensure profile refreshes with latest subscription status
+            await this.cacheService.invalidateUserCache(userId);
         }
 
         return { status: 'success', message: 'Payment verified and subscription activated' };
@@ -304,6 +309,7 @@ export class SubscriptionsService {
             user.isSubscribed = false;
             await this.userRepository.save(user);
             await this.syncFlagsmithTraits(user);
+            await this.cacheService.invalidateUserCache(userId);
         }
 
         return {
