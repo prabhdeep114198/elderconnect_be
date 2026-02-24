@@ -268,4 +268,22 @@ export class UpdateProfileDto extends CreateProfileDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @ApiProperty({
+    description: 'User avatar URL',
+    example: 'https://example.com/avatar.jpg',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  avatar?: string;
+
+  @ApiProperty({
+    description: 'Full name',
+    example: 'John Doe',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  name?: string;
 }

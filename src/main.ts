@@ -10,6 +10,7 @@ import { getMetadataArgsStorage } from 'typeorm';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
+  logger.log('Bootstrapping Elder Connect API...');
 
   const app = await NestFactory.create(AppModule, {
     logger: ['error', 'warn', 'log', 'debug', 'verbose'],
@@ -99,7 +100,7 @@ async function bootstrap() {
   // 🔹 Debug: print all registered TypeORM entities
   logger.log(
     'Registered TypeORM entities: ' +
-      getMetadataArgsStorage().tables.map((t) => t.target.toString()).join(', '),
+    getMetadataArgsStorage().tables.map((t) => t.target.toString()).join(', '),
   );
 
   // Graceful shutdown
