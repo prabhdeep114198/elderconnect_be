@@ -49,44 +49,90 @@ FIELD EXTRACTION RULES:
 - If a place, venue, or location is mentioned (e.g., auditorium, hospital, home, clinic), extract it into "location"
 - If no location is mentioned, return location as null
 
-Intent rules:
-- REMINDER: Asking to be reminded
-- CREATE_EVENT: Scheduling an appointment, activity, or medication
-- LOG_VITAL: Reporting a health measurement
-- QUERY_INFO: Asking a question
-- ERROR: Missing or invalid required info
-- UNKNOWN: Intent unclear
+Return ONLY valid JSON matching EXACTLY the format for the detected intent.
 
-Return ONLY valid JSON in EXACTLY this format:
-
+FORMAT FOR LOG_VITAL (Blood Pressure, Heart Rate, Temperature, Sugar/Glucose, Weight):
 {
-  "typeOfRequest": "CREATE_EVENT" | "LOG_VITAL" | "REMINDER" | "QUERY_INFO" | "ERROR" | "UNKNOWN",
-  "correctedText": "corrected sentence",
-  "message": "friendly confirmation or clarification",
-  "jwt": "same JWT value received",
+  "typeOfRequest": "LOG_VITAL",
+  "correctedText": "...",
+  "message": "friendly confirmation (e.g., 'I have logged your blood pressure of 120/80.')",
+  "jwt": "same string",
   "data": {
-    "title": "short title",
-    "scheduledAt": "YYYY-MM-DDTHH:MM:SSZ",
-    "location": "venue or place name or null",
-    "description": "details",
-    "type": "appointment" | "medication" | "activity" | "reminder",
-
     "vitalType": "blood_pressure" | "heart_rate" | "temperature" | "glucose" | "weight",
-    "value": "measurement value",
-    "unit": "measurement unit",
-    "notes": "additional context",
+    "value": "string measurement (e.g. 120/80, 98, 37.5)",
+    "unit": "string unit (e.g. mmHg, bpm, °C, mg/dL)",
+    "notes": "optional context"
+  }
+}
 
-    "queryType": "type of query",
+FORMAT FOR CREATE_EVENT - MEDICATION (If taking or scheduling a medicine):
+{
+  "typeOfRequest": "CREATE_EVENT",
+  "correctedText": "...",
+  "message": "friendly confirmation",
+  "jwt": "same string",
+  "data": {
+    "type": "medication",
+    "title": "medicine name",
+    "value": "dosage (e.g., 500 mg)",
+    "scheduledAt": "YYYY-MM-DDTHH:MM:SSZ"
+  }
+}
+
+FORMAT FOR CREATE_EVENT - ACTIVITY or APPOINTMENT:
+{
+  "typeOfRequest": "CREATE_EVENT",
+  "correctedText": "...",
+  "message": "friendly confirmation",
+  "jwt": "same string",
+  "data": {
+    "type": "activity" | "appointment",
+    "title": "short title of event",
+    "description": "details of the event",
+    "scheduledAt": "YYYY-MM-DDTHH:MM:SSZ",
+    "location": "venue or null"
+  }
+}
+
+FORMAT FOR REMINDER:
+{
+  "typeOfRequest": "REMINDER",
+  "correctedText": "...",
+  "message": "friendly confirmation",
+  "jwt": "same string",
+  "data": {
+    "title": "what to remind",
+    "scheduledAt": "YYYY-MM-DDTHH:MM:SSZ"
+  }
+}
+
+FORMAT FOR QUERY_INFO:
+{
+  "typeOfRequest": "QUERY_INFO",
+  "correctedText": "...",
+  "message": "response to query",
+  "jwt": "same string",
+  "data": {
+    "queryType": "type of query (e.g. weather, general, health)",
     "details": "query specifics"
   }
 }
 
+FORMAT FOR ERROR / UNKNOWN:
+{
+  "typeOfRequest": "ERROR" | "UNKNOWN",
+  "correctedText": "...",
+  "message": "friendly explanation of what was missed",
+  "jwt": "same string",
+  "data": {}
+}
+
 STRICT RULES:
 - Output ONLY JSON
-- No markdown
+- No markdown formatting wrappers like \`\`\`json
 - No explanations
 - No extra text
-- All required fields MUST be present for the detected intent`;
+- Do not include fields in the "data" object that do not belong to the specific format shown above`;
 
 @Injectable()
 export class VoiceAssistantService {
@@ -122,18 +168,25 @@ export class VoiceAssistantService {
     // MAIN ENTRY: process voice command (replicates N8N pipeline)
     // ═══════════════════════════════════════════════════════════════════
     async processVoiceCommand(dto: VoiceAssistantRequestDto): Promise<VoiceAssistantResponse> {
-        const { text, userContext, jwt } = dto;
+        const { text, userContext, jwt, isConfirmation, pendingIntent } = dto;
         const userId = userContext.userId;
 
-        this.logger.log(`[VoiceAssistant] Processing command for user ${userId}: "${text}"`);
+        this.logger.log(`[VoiceAssistant] Processing command for user ${userId}: "${text}" (isConfirmation: ${isConfirmation})`);
 
-        // ── Step 1: Call HuggingFace Intent Parser ──────────────────────
         let parsed: ParsedIntent;
-        try {
-            parsed = await this.callHuggingFaceIntentParser(text, jwt);
-        } catch (err) {
-            this.logger.error(`[VoiceAssistant] HF Intent Parser failed: ${err.message}`);
-            return this.buildErrorResponse(text, 'Sorry, I had trouble understanding that. Could you please try again?', userId);
+
+        if (isConfirmation && pendingIntent) {
+            // User confirmed the action, bypass AI parsing and execute
+            this.logger.log(`[VoiceAssistant] Executing pre-confirmed intent for user ${userId}`);
+            parsed = pendingIntent;
+        } else {
+            // ── Step 1: Call HuggingFace Intent Parser ──────────────────────
+            try {
+                parsed = await this.callHuggingFaceIntentParser(text, jwt);
+            } catch (err) {
+                this.logger.error(`[VoiceAssistant] HF Intent Parser failed: ${err.message}`);
+                return this.buildErrorResponse(text, 'Sorry, I had trouble understanding that. Could you please try again?', userId);
+            }
         }
 
         // ── Step 2: Validate parsed response ───────────────────────────
@@ -146,7 +199,23 @@ export class VoiceAssistantService {
 
         this.logger.log(`[VoiceAssistant] Intent detected: ${parsed.typeOfRequest} | Message: ${parsed.message}`);
 
-        // ── Step 3: Route by action ─────────────────────────────────────
+        const requiresConfirmationTypes = ['CREATE_EVENT', 'LOG_VITAL', 'REMINDER'];
+
+        if (!isConfirmation && requiresConfirmationTypes.includes(parsed.typeOfRequest)) {
+            // Return intermediate confirmation step to frontend
+            return {
+                success: true,
+                requiresConfirmation: true,
+                pendingIntent: parsed,
+                action: parsed.typeOfRequest,
+                originalText,
+                correctedText: parsed.correctedText || text,
+                message: `${parsed.message} Should I save this?`,
+                timestamp: new Date().toISOString(),
+            };
+        }
+
+        // ── Step 3: Route by action (Execution phase) ───────────────────
         switch (parsed.typeOfRequest as IntentType) {
             case 'CREATE_EVENT':
                 return this.handleCreateEvent(parsed, userId, originalText);
@@ -321,11 +390,12 @@ export class VoiceAssistantService {
         try {
             const vitalType = this.normalizeVitalType(data.vitalType || 'unknown');
             const unit = data.unit || this.defaultUnit(vitalType);
+            const reading = this.formatVitalReading(vitalType, data.value || '');
 
             const vital = this.vitalsRepository.create({
                 userId,
                 vitalType,
-                reading: data.value ? { value: parseFloat(data.value) } : {},
+                reading,
                 unit,
                 notes: data.notes || correctedText,
                 recordedAt: new Date(),
@@ -402,8 +472,40 @@ export class VoiceAssistantService {
 
     private defaultUnit(vitalType: string): string {
         const units: Record<string, string> = {
-            blood_pressure: 'mmHg', heart_rate: 'bpm', temperature: '°C', weight: 'kg',
+            blood_pressure: 'mmHg', heart_rate: 'bpm', temperature: '°C', weight: 'kg', blood_sugar: 'mg/dL', oxygen_saturation: '%'
         };
         return units[vitalType] || '';
+    }
+
+    private formatVitalReading(vitalType: string, value: string): Record<string, any> {
+        if (!value) return {};
+
+        const rawValue = String(value).trim().toLowerCase();
+
+        switch (vitalType) {
+            case 'blood_pressure':
+                // Handles '180/90', '180 over 90', '180 \ 90'
+                const parts = rawValue.split(/[\/\s\\]+/).filter(p => p !== 'over');
+                if (parts.length >= 2) {
+                    return {
+                        systolic: parseInt(parts[0], 10),
+                        diastolic: parseInt(parts[1], 10)
+                    };
+                }
+                return { value: rawValue };
+            case 'heart_rate':
+                return { bpm: parseFloat(rawValue) };
+            case 'temperature':
+                const temp = parseFloat(rawValue);
+                return { celsius: temp > 50 ? parseFloat(((temp - 32) * 5 / 9).toFixed(1)) : temp };
+            case 'weight':
+                return { kg: parseFloat(rawValue) };
+            case 'blood_sugar':
+                return { mgdl: parseFloat(rawValue) };
+            case 'oxygen_saturation':
+                return { percentage: parseFloat(rawValue) };
+            default:
+                return { value: parseFloat(rawValue) || rawValue };
+        }
     }
 }

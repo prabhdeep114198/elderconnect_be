@@ -25,6 +25,14 @@ export class VoiceAssistantRequestDto {
     @IsOptional()
     userContext: any;
 
+    @ApiProperty({ example: false, required: false })
+    @IsOptional()
+    isConfirmation?: boolean;
+
+    @ApiProperty({ required: false })
+    @IsOptional()
+    pendingIntent?: any;
+
     @ApiProperty({ example: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' })
     @IsString()
     @IsNotEmpty()
@@ -81,5 +89,7 @@ export interface VoiceAssistantResponse {
     vitalId?: string;
     medicationId?: string;
     appointmentId?: string;
+    requiresConfirmation?: boolean;
+    pendingIntent?: any;
     data?: any;
 }
