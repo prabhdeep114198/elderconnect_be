@@ -41,6 +41,7 @@ import { VoiceModule } from './voice/voice.module';
 import { GraphModule } from './graph/graph.module';
 import { CommonCacheModule } from './common/services/cache.module';
 import { PersonalizationModule } from './personalization/personalization.module';
+import { VoiceAssistantModule } from './voice-assistant/voice-assistant.module';
 
 // Common interceptors
 import { AuditLogInterceptor } from './common/interceptors/audit-log.interceptor';
@@ -242,7 +243,11 @@ import { UserInteraction } from './personalization/entities/user-interaction.ent
     VideoCallModule,
     CommonCacheModule,
     PersonalizationModule,
+<<<<<<< HEAD
     EventsModule,
+=======
+    VoiceAssistantModule,
+>>>>>>> c0826540400828a0585a5478f1bbb0431ec813c1
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
