@@ -10,7 +10,7 @@ import { PrivacyModule } from "./privacy/privacy.module";
 import { PrivacyPolicy } from "./privacy/entities/privacy-policy.entity";
 import { VideoCallModule } from './videocall/videocall.module';
 import { VideoCallEntity } from './videocall/videocall.entity';
-import { EventsModule } from './events/events.module';
+
 
 // Configuration
 import {
@@ -82,7 +82,6 @@ import { UserInteraction } from './personalization/entities/user-interaction.ent
         throttleConfig,
         fileUploadConfig,
         n8nConfig,
-        
 
       ],
       envFilePath: ['.env.local', '.env'],
@@ -242,7 +241,6 @@ import { UserInteraction } from './personalization/entities/user-interaction.ent
     VideoCallModule,
     CommonCacheModule,
     PersonalizationModule,
-    EventsModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
