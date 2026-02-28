@@ -1,0 +1,384 @@
+  console.warn
+    {"level":"WARN","timestamp":"2026-02-28T14:22:52.872Z","logger":"kafkajs","message":"KafkaJS v2.0.0 switched default partitioner. To retain the same partitioning behavior as in previous versions, create the producer with the option \"createPartitioner: Partitioners.LegacyPartitioner\". See the migration guide at https://kafka.js.org/docs/migration-guide-v2.0.0#producer-new-default-partitioner for details. Silence this warning by setting the environment variable \"KAFKAJS_NO_PARTITIONER_WARNING=1\""}
+
+    [0m [90m 68 |[39m     [90m// Producer setup[39m
+     [90m 69 |[39m     [90m// -----------------------------[39m
+    [31m[1m>[22m[39m[90m 70 |[39m     [36mthis[39m[33m.[39mproducer [33m=[39m [36mthis[39m[33m.[39mkafka[33m.[39mproducer({
+     [90m    |[39m                                [31m[1m^[22m[39m
+     [90m 71 |[39m       maxInFlightRequests[33m:[39m [35m1[39m[33m,[39m
+     [90m 72 |[39m       idempotent[33m:[39m [36mtrue[39m[33m,[39m
+     [90m 73 |[39m       transactionTimeout[33m:[39m [35m30000[39m[33m,[39m[0m
+
+      at ../node_modules/kafkajs/src/loggers/console.js:17:22
+      at Object.warn (../node_modules/kafkajs/src/loggers/index.js:16:3)
+      at ../node_modules/kafkajs/src/index.js:27:12
+      at ../node_modules/kafkajs/src/utils/once.js:7:14
+      at Client.producer (../node_modules/kafkajs/src/index.js:120:7)
+      at new KafkaService (../src/device/services/kafka.service.ts:70:32)
+      at TestingInjector.instantiateClass (../node_modules/@nestjs/core/injector/injector.js:418:19)
+      at callback (../node_modules/@nestjs/core/injector/injector.js:70:45)
+      at TestingInjector.resolveConstructorParams (../node_modules/@nestjs/core/injector/injector.js:170:24)
+      at TestingInjector.loadInstance (../node_modules/@nestjs/core/injector/injector.js:75:13)
+      at TestingInjector.loadProvider (../node_modules/@nestjs/core/injector/injector.js:103:9)
+      at ../node_modules/@nestjs/core/injector/instance-loader.js:56:13
+          at async Promise.all (index 4)
+      at TestingInstanceLoader.createInstancesOfProviders (../node_modules/@nestjs/core/injector/instance-loader.js:55:9)
+      at ../node_modules/@nestjs/core/injector/instance-loader.js:40:13
+          at async Promise.all (index 31)
+      at TestingInstanceLoader.createInstances (../node_modules/@nestjs/core/injector/instance-loader.js:39:9)
+      at TestingInstanceLoader.createInstancesOfDependencies (../node_modules/@nestjs/core/injector/instance-loader.js:22:13)
+      at TestingInstanceLoader.createInstancesOfDependencies (../node_modules/@nestjs/testing/testing-instance-loader.js:9:9)
+      at TestingModuleBuilder.createInstancesOfDependencies (../node_modules/@nestjs/testing/testing-module.builder.js:118:9)
+      at TestingModuleBuilder.compile (../node_modules/@nestjs/testing/testing-module.builder.js:74:9)
+      at Object.<anonymous> (app.e2e-spec.ts:11:42)
+
+  console.warn
+    {"level":"WARN","timestamp":"2026-02-28T14:22:52.906Z","logger":"kafkajs","message":"[Producer] Limiting retries for the idempotent producer may invalidate EoS guarantees"}
+
+    [0m [90m 68 |[39m     [90m// Producer setup[39m
+     [90m 69 |[39m     [90m// -----------------------------[39m
+    [31m[1m>[22m[39m[90m 70 |[39m     [36mthis[39m[33m.[39mproducer [33m=[39m [36mthis[39m[33m.[39mkafka[33m.[39mproducer({
+     [90m    |[39m                                [31m[1m^[22m[39m
+     [90m 71 |[39m       maxInFlightRequests[33m:[39m [35m1[39m[33m,[39m
+     [90m 72 |[39m       idempotent[33m:[39m [36mtrue[39m[33m,[39m
+     [90m 73 |[39m       transactionTimeout[33m:[39m [35m30000[39m[33m,[39m[0m
+
+      at ../node_modules/kafkajs/src/loggers/console.js:17:22
+      at Object.warn (../node_modules/kafkajs/src/loggers/index.js:16:3)
+      at module.exports (../node_modules/kafkajs/src/producer/index.js:54:12)
+      at Client.producer (../node_modules/kafkajs/src/index.js:123:12)
+      at new KafkaService (../src/device/services/kafka.service.ts:70:32)
+      at TestingInjector.instantiateClass (../node_modules/@nestjs/core/injector/injector.js:418:19)
+      at callback (../node_modules/@nestjs/core/injector/injector.js:70:45)
+      at TestingInjector.resolveConstructorParams (../node_modules/@nestjs/core/injector/injector.js:170:24)
+      at TestingInjector.loadInstance (../node_modules/@nestjs/core/injector/injector.js:75:13)
+      at TestingInjector.loadProvider (../node_modules/@nestjs/core/injector/injector.js:103:9)
+      at ../node_modules/@nestjs/core/injector/instance-loader.js:56:13
+          at async Promise.all (index 4)
+      at TestingInstanceLoader.createInstancesOfProviders (../node_modules/@nestjs/core/injector/instance-loader.js:55:9)
+      at ../node_modules/@nestjs/core/injector/instance-loader.js:40:13
+          at async Promise.all (index 31)
+      at TestingInstanceLoader.createInstances (../node_modules/@nestjs/core/injector/instance-loader.js:39:9)
+      at TestingInstanceLoader.createInstancesOfDependencies (../node_modules/@nestjs/core/injector/instance-loader.js:22:13)
+      at TestingInstanceLoader.createInstancesOfDependencies (../node_modules/@nestjs/testing/testing-instance-loader.js:9:9)
+      at TestingModuleBuilder.createInstancesOfDependencies (../node_modules/@nestjs/testing/testing-module.builder.js:118:9)
+      at TestingModuleBuilder.compile (../node_modules/@nestjs/testing/testing-module.builder.js:74:9)
+      at Object.<anonymous> (app.e2e-spec.ts:11:42)
+
+  console.error
+    {"level":"ERROR","timestamp":"2026-02-28T14:22:57.084Z","logger":"kafkajs","message":"[Connection] Connection error: ","broker":"localhost:9092","clientId":"elder-connect-client","stack":"AggregateError: \n    at internalConnectMultiple (node:net:1139:18)\n    at afterConnectMultiple (node:net:1712:7)\n    at TCPConnectWrap.callbackTrampoline (node:internal/async_hooks:130:17)"}
+
+      at ../node_modules/kafkajs/src/loggers/console.js:15:22
+      at ../node_modules/kafkajs/src/loggers/index.js:16:3
+      at Connection.logError (../node_modules/kafkajs/src/network/connection.js:111:7)
+      at Socket.onError (../node_modules/kafkajs/src/network/connection.js:215:14)
+
+  console.error
+    {"level":"ERROR","timestamp":"2026-02-28T14:22:57.088Z","logger":"kafkajs","message":"[BrokerPool] Failed to connect to seed broker, trying another broker from the list: Connection error: ","retryCount":0,"retryTime":102}
+
+    [0m [90m 101 |[39m     [36mtry[39m {
+     [90m 102 |[39m       [36mthis[39m[33m.[39mlogger[33m.[39mlog([32m'Connecting to Kafka...'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 103 |[39m       [36mawait[39m [36mthis[39m[33m.[39mproducer[33m.[39mconnect()[33m;[39m
+     [90m     |[39m       [31m[1m^[22m[39m
+     [90m 104 |[39m       [36mawait[39m [36mthis[39m[33m.[39mconsumer[33m.[39mconnect()[33m;[39m
+     [90m 105 |[39m
+     [90m 106 |[39m       [90m// Subscribe to all topics[39m[0m
+
+      at ../node_modules/kafkajs/src/loggers/console.js:15:22
+      at Object.error (../node_modules/kafkajs/src/loggers/index.js:16:3)
+      at ../node_modules/kafkajs/src/cluster/brokerPool.js:99:23
+      at ../node_modules/kafkajs/src/cluster/index.js:107:14
+      at Cluster.connect (../node_modules/kafkajs/src/cluster/index.js:146:5)
+      at Object.connect (../node_modules/kafkajs/src/producer/index.js:219:7)
+      at KafkaService.onModuleInit (../src/device/services/kafka.service.ts:103:7)
+          at async Promise.all (index 0)
+      at callModuleInitHook (../node_modules/@nestjs/core/hooks/on-module-init.hook.js:43:5)
+      at Proxy.callInitHook (../node_modules/@nestjs/core/nest-application-context.js:242:13)
+      at Proxy.init (../node_modules/@nestjs/core/nest-application.js:103:9)
+      at Object.<anonymous> (app.e2e-spec.ts:16:5)
+
+  console.error
+    {"level":"ERROR","timestamp":"2026-02-28T14:22:57.207Z","logger":"kafkajs","message":"[Connection] Connection error: ","broker":"localhost:9092","clientId":"elder-connect-client","stack":"AggregateError: \n    at internalConnectMultiple (node:net:1139:18)\n    at afterConnectMultiple (node:net:1712:7)\n    at TCPConnectWrap.callbackTrampoline (node:internal/async_hooks:130:17)"}
+
+      at ../node_modules/kafkajs/src/loggers/console.js:15:22
+      at ../node_modules/kafkajs/src/loggers/index.js:16:3
+      at Connection.logError (../node_modules/kafkajs/src/network/connection.js:111:7)
+      at Socket.onError (../node_modules/kafkajs/src/network/connection.js:215:14)
+
+  console.error
+    {"level":"ERROR","timestamp":"2026-02-28T14:22:57.208Z","logger":"kafkajs","message":"[BrokerPool] Failed to connect to seed broker, trying another broker from the list: Connection error: ","retryCount":1,"retryTime":151.5}
+
+    [0m [90m 101 |[39m     [36mtry[39m {
+     [90m 102 |[39m       [36mthis[39m[33m.[39mlogger[33m.[39mlog([32m'Connecting to Kafka...'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 103 |[39m       [36mawait[39m [36mthis[39m[33m.[39mproducer[33m.[39mconnect()[33m;[39m
+     [90m     |[39m       [31m[1m^[22m[39m
+     [90m 104 |[39m       [36mawait[39m [36mthis[39m[33m.[39mconsumer[33m.[39mconnect()[33m;[39m
+     [90m 105 |[39m
+     [90m 106 |[39m       [90m// Subscribe to all topics[39m[0m
+
+      at ../node_modules/kafkajs/src/loggers/console.js:15:22
+      at Object.error (../node_modules/kafkajs/src/loggers/index.js:16:3)
+      at ../node_modules/kafkajs/src/cluster/brokerPool.js:99:23
+      at ../node_modules/kafkajs/src/cluster/index.js:107:14
+      at Cluster.connect (../node_modules/kafkajs/src/cluster/index.js:146:5)
+      at Object.connect (../node_modules/kafkajs/src/producer/index.js:219:7)
+      at KafkaService.onModuleInit (../src/device/services/kafka.service.ts:103:7)
+          at async Promise.all (index 0)
+      at callModuleInitHook (../node_modules/@nestjs/core/hooks/on-module-init.hook.js:43:5)
+      at Proxy.callInitHook (../node_modules/@nestjs/core/nest-application-context.js:242:13)
+      at Proxy.init (../node_modules/@nestjs/core/nest-application.js:103:9)
+      at Object.<anonymous> (app.e2e-spec.ts:16:5)
+
+  console.error
+    {"level":"ERROR","timestamp":"2026-02-28T14:22:57.374Z","logger":"kafkajs","message":"[Connection] Connection error: ","broker":"localhost:9092","clientId":"elder-connect-client","stack":"AggregateError: \n    at internalConnectMultiple (node:net:1139:18)\n    at afterConnectMultiple (node:net:1712:7)\n    at TCPConnectWrap.callbackTrampoline (node:internal/async_hooks:130:17)"}
+
+      at ../node_modules/kafkajs/src/loggers/console.js:15:22
+      at ../node_modules/kafkajs/src/loggers/index.js:16:3
+      at Connection.logError (../node_modules/kafkajs/src/network/connection.js:111:7)
+      at Socket.onError (../node_modules/kafkajs/src/network/connection.js:215:14)
+
+  console.error
+    {"level":"ERROR","timestamp":"2026-02-28T14:22:57.376Z","logger":"kafkajs","message":"[BrokerPool] Failed to connect to seed broker, trying another broker from the list: Connection error: ","retryCount":2,"retryTime":231}
+
+    [0m [90m 101 |[39m     [36mtry[39m {
+     [90m 102 |[39m       [36mthis[39m[33m.[39mlogger[33m.[39mlog([32m'Connecting to Kafka...'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 103 |[39m       [36mawait[39m [36mthis[39m[33m.[39mproducer[33m.[39mconnect()[33m;[39m
+     [90m     |[39m       [31m[1m^[22m[39m
+     [90m 104 |[39m       [36mawait[39m [36mthis[39m[33m.[39mconsumer[33m.[39mconnect()[33m;[39m
+     [90m 105 |[39m
+     [90m 106 |[39m       [90m// Subscribe to all topics[39m[0m
+
+      at ../node_modules/kafkajs/src/loggers/console.js:15:22
+      at Object.error (../node_modules/kafkajs/src/loggers/index.js:16:3)
+      at ../node_modules/kafkajs/src/cluster/brokerPool.js:99:23
+      at ../node_modules/kafkajs/src/cluster/index.js:107:14
+      at Cluster.connect (../node_modules/kafkajs/src/cluster/index.js:146:5)
+      at Object.connect (../node_modules/kafkajs/src/producer/index.js:219:7)
+      at KafkaService.onModuleInit (../src/device/services/kafka.service.ts:103:7)
+          at async Promise.all (index 0)
+      at callModuleInitHook (../node_modules/@nestjs/core/hooks/on-module-init.hook.js:43:5)
+      at Proxy.callInitHook (../node_modules/@nestjs/core/nest-application-context.js:242:13)
+      at Proxy.init (../node_modules/@nestjs/core/nest-application.js:103:9)
+      at Object.<anonymous> (app.e2e-spec.ts:16:5)
+
+  console.error
+    {"level":"ERROR","timestamp":"2026-02-28T14:22:57.644Z","logger":"kafkajs","message":"[Connection] Connection error: ","broker":"localhost:9092","clientId":"elder-connect-client","stack":"AggregateError: \n    at internalConnectMultiple (node:net:1139:18)\n    at afterConnectMultiple (node:net:1712:7)\n    at TCPConnectWrap.callbackTrampoline (node:internal/async_hooks:130:17)"}
+
+      at ../node_modules/kafkajs/src/loggers/console.js:15:22
+      at ../node_modules/kafkajs/src/loggers/index.js:16:3
+      at Connection.logError (../node_modules/kafkajs/src/network/connection.js:111:7)
+      at Socket.onError (../node_modules/kafkajs/src/network/connection.js:215:14)
+
+  console.error
+    {"level":"ERROR","timestamp":"2026-02-28T14:22:57.646Z","logger":"kafkajs","message":"[BrokerPool] Failed to connect to seed broker, trying another broker from the list: Connection error: ","retryCount":3,"retryTime":342}
+
+    [0m [90m 101 |[39m     [36mtry[39m {
+     [90m 102 |[39m       [36mthis[39m[33m.[39mlogger[33m.[39mlog([32m'Connecting to Kafka...'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 103 |[39m       [36mawait[39m [36mthis[39m[33m.[39mproducer[33m.[39mconnect()[33m;[39m
+     [90m     |[39m       [31m[1m^[22m[39m
+     [90m 104 |[39m       [36mawait[39m [36mthis[39m[33m.[39mconsumer[33m.[39mconnect()[33m;[39m
+     [90m 105 |[39m
+     [90m 106 |[39m       [90m// Subscribe to all topics[39m[0m
+
+      at ../node_modules/kafkajs/src/loggers/console.js:15:22
+      at Object.error (../node_modules/kafkajs/src/loggers/index.js:16:3)
+      at ../node_modules/kafkajs/src/cluster/brokerPool.js:99:23
+      at ../node_modules/kafkajs/src/cluster/index.js:107:14
+      at Cluster.connect (../node_modules/kafkajs/src/cluster/index.js:146:5)
+      at Object.connect (../node_modules/kafkajs/src/producer/index.js:219:7)
+      at KafkaService.onModuleInit (../src/device/services/kafka.service.ts:103:7)
+          at async Promise.all (index 0)
+      at callModuleInitHook (../node_modules/@nestjs/core/hooks/on-module-init.hook.js:43:5)
+      at Proxy.callInitHook (../node_modules/@nestjs/core/nest-application-context.js:242:13)
+      at Proxy.init (../node_modules/@nestjs/core/nest-application.js:103:9)
+      at Object.<anonymous> (app.e2e-spec.ts:16:5)
+
+FAIL test/app.e2e-spec.ts (8.58 s)
+  AppController (e2e)
+    × / (GET) (5015 ms)
+
+  ● AppController (e2e) › / (GET)
+
+    thrown: "Exceeded timeout of 5000 ms for a hook.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+    [0m [90m  8 |[39m   [36mlet[39m app[33m:[39m [33mINestApplication[39m[33m<[39m[33mApp[39m[33m>[39m[33m;[39m
+     [90m  9 |[39m
+    [31m[1m>[22m[39m[90m 10 |[39m   beforeEach([36masync[39m () [33m=>[39m {
+     [90m    |[39m   [31m[1m^[22m[39m
+     [90m 11 |[39m     [36mconst[39m moduleFixture[33m:[39m [33mTestingModule[39m [33m=[39m [36mawait[39m [33mTest[39m[33m.[39mcreateTestingModule({
+     [90m 12 |[39m       imports[33m:[39m [[33mAppModule[39m][33m,[39m
+     [90m 13 |[39m     })[33m.[39mcompile()[33m;[39m[0m
+
+      at app.e2e-spec.ts:10:3
+      at Object.<anonymous> (app.e2e-spec.ts:7:1)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 1 total
+Snapshots:   0 total
+Time:        8.927 s, estimated 14 s
+Ran all test suites.
+  console.error
+    {"level":"ERROR","timestamp":"2026-02-28T14:22:58.001Z","logger":"kafkajs","message":"[Connection] Connection error: ","broker":"localhost:9092","clientId":"elder-connect-client","stack":"AggregateError: \n    at internalConnectMultiple (node:net:1139:18)\n    at afterConnectMultiple (node:net:1712:7)\n    at TCPConnectWrap.callbackTrampoline (node:internal/async_hooks:130:17)"}
+
+      at ../node_modules/kafkajs/src/loggers/console.js:15:22
+      at ../node_modules/kafkajs/src/loggers/index.js:16:3
+      at Connection.logError (../node_modules/kafkajs/src/network/connection.js:111:7)
+      at Socket.onError (../node_modules/kafkajs/src/network/connection.js:215:14)
+
+  console.error
+    {"level":"ERROR","timestamp":"2026-02-28T14:22:58.002Z","logger":"kafkajs","message":"[BrokerPool] Failed to connect to seed broker, trying another broker from the list: Connection error: ","retryCount":4,"retryTime":511.5}
+
+    [0m [90m 101 |[39m     [36mtry[39m {
+     [90m 102 |[39m       [36mthis[39m[33m.[39mlogger[33m.[39mlog([32m'Connecting to Kafka...'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 103 |[39m       [36mawait[39m [36mthis[39m[33m.[39mproducer[33m.[39mconnect()[33m;[39m
+     [90m     |[39m       [31m[1m^[22m[39m
+     [90m 104 |[39m       [36mawait[39m [36mthis[39m[33m.[39mconsumer[33m.[39mconnect()[33m;[39m
+     [90m 105 |[39m
+     [90m 106 |[39m       [90m// Subscribe to all topics[39m[0m
+
+      at ../node_modules/kafkajs/src/loggers/console.js:15:22
+      at Object.error (../node_modules/kafkajs/src/loggers/index.js:16:3)
+      at ../node_modules/kafkajs/src/cluster/brokerPool.js:99:23
+      at ../node_modules/kafkajs/src/cluster/index.js:107:14
+      at Cluster.connect (../node_modules/kafkajs/src/cluster/index.js:146:5)
+      at Object.connect (../node_modules/kafkajs/src/producer/index.js:219:7)
+      at KafkaService.onModuleInit (../src/device/services/kafka.service.ts:103:7)
+          at async Promise.all (index 0)
+      at callModuleInitHook (../node_modules/@nestjs/core/hooks/on-module-init.hook.js:43:5)
+      at Proxy.callInitHook (../node_modules/@nestjs/core/nest-application-context.js:242:13)
+      at Proxy.init (../node_modules/@nestjs/core/nest-application.js:103:9)
+      at Object.<anonymous> (app.e2e-spec.ts:16:5)
+
+  console.error
+    {"level":"ERROR","timestamp":"2026-02-28T14:22:58.523Z","logger":"kafkajs","message":"[Connection] Connection error: ","broker":"localhost:9092","clientId":"elder-connect-client","stack":"AggregateError: \n    at internalConnectMultiple (node:net:1139:18)\n    at afterConnectMultiple (node:net:1712:7)\n    at TCPConnectWrap.callbackTrampoline (node:internal/async_hooks:130:17)"}
+
+      at ../node_modules/kafkajs/src/loggers/console.js:15:22
+      at ../node_modules/kafkajs/src/loggers/index.js:16:3
+      at Connection.logError (../node_modules/kafkajs/src/network/connection.js:111:7)
+      at Socket.onError (../node_modules/kafkajs/src/network/connection.js:215:14)
+
+  console.error
+    {"level":"ERROR","timestamp":"2026-02-28T14:22:58.524Z","logger":"kafkajs","message":"[BrokerPool] Failed to connect to seed broker, trying another broker from the list: Connection error: ","retryCount":5,"retryTime":756}
+
+    [0m [90m 101 |[39m     [36mtry[39m {
+     [90m 102 |[39m       [36mthis[39m[33m.[39mlogger[33m.[39mlog([32m'Connecting to Kafka...'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 103 |[39m       [36mawait[39m [36mthis[39m[33m.[39mproducer[33m.[39mconnect()[33m;[39m
+     [90m     |[39m       [31m[1m^[22m[39m
+     [90m 104 |[39m       [36mawait[39m [36mthis[39m[33m.[39mconsumer[33m.[39mconnect()[33m;[39m
+     [90m 105 |[39m
+     [90m 106 |[39m       [90m// Subscribe to all topics[39m[0m
+
+      at ../node_modules/kafkajs/src/loggers/console.js:15:22
+      at Object.error (../node_modules/kafkajs/src/loggers/index.js:16:3)
+      at ../node_modules/kafkajs/src/cluster/brokerPool.js:99:23
+      at ../node_modules/kafkajs/src/cluster/index.js:107:14
+      at Cluster.connect (../node_modules/kafkajs/src/cluster/index.js:146:5)
+      at Object.connect (../node_modules/kafkajs/src/producer/index.js:219:7)
+      at KafkaService.onModuleInit (../src/device/services/kafka.service.ts:103:7)
+          at async Promise.all (index 0)
+      at callModuleInitHook (../node_modules/@nestjs/core/hooks/on-module-init.hook.js:43:5)
+      at Proxy.callInitHook (../node_modules/@nestjs/core/nest-application-context.js:242:13)
+      at Proxy.init (../node_modules/@nestjs/core/nest-application.js:103:9)
+      at Object.<anonymous> (app.e2e-spec.ts:16:5)
+
+Jest did not exit one second after the test run has completed.
+
+'This usually means that there are asynchronous operations that weren't stopped in your tests. Consider running Jest with `--detectOpenHandles` to troubleshoot this issue.
+  console.error
+    {"level":"ERROR","timestamp":"2026-02-28T14:22:59.288Z","logger":"kafkajs","message":"[Connection] Connection error: ","broker":"localhost:9092","clientId":"elder-connect-client","stack":"AggregateError: \n    at internalConnectMultiple (node:net:1139:18)\n    at afterConnectMultiple (node:net:1712:7)\n    at TCPConnectWrap.callbackTrampoline (node:internal/async_hooks:130:17)"}
+
+      at ../node_modules/kafkajs/src/loggers/console.js:15:22
+      at ../node_modules/kafkajs/src/loggers/index.js:16:3
+      at Connection.logError (../node_modules/kafkajs/src/network/connection.js:111:7)
+      at Socket.onError (../node_modules/kafkajs/src/network/connection.js:215:14)
+
+  console.error
+    {"level":"ERROR","timestamp":"2026-02-28T14:22:59.289Z","logger":"kafkajs","message":"[BrokerPool] Failed to connect to seed broker, trying another broker from the list: Connection error: ","retryCount":6,"retryTime":1000}
+
+    [0m [90m 101 |[39m     [36mtry[39m {
+     [90m 102 |[39m       [36mthis[39m[33m.[39mlogger[33m.[39mlog([32m'Connecting to Kafka...'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 103 |[39m       [36mawait[39m [36mthis[39m[33m.[39mproducer[33m.[39mconnect()[33m;[39m
+     [90m     |[39m       [31m[1m^[22m[39m
+     [90m 104 |[39m       [36mawait[39m [36mthis[39m[33m.[39mconsumer[33m.[39mconnect()[33m;[39m
+     [90m 105 |[39m
+     [90m 106 |[39m       [90m// Subscribe to all topics[39m[0m
+
+      at ../node_modules/kafkajs/src/loggers/console.js:15:22
+      at Object.error (../node_modules/kafkajs/src/loggers/index.js:16:3)
+      at ../node_modules/kafkajs/src/cluster/brokerPool.js:99:23
+      at ../node_modules/kafkajs/src/cluster/index.js:107:14
+      at Cluster.connect (../node_modules/kafkajs/src/cluster/index.js:146:5)
+      at Object.connect (../node_modules/kafkajs/src/producer/index.js:219:7)
+      at KafkaService.onModuleInit (../src/device/services/kafka.service.ts:103:7)
+          at async Promise.all (index 0)
+      at callModuleInitHook (../node_modules/@nestjs/core/hooks/on-module-init.hook.js:43:5)
+      at Proxy.callInitHook (../node_modules/@nestjs/core/nest-application-context.js:242:13)
+      at Proxy.init (../node_modules/@nestjs/core/nest-application.js:103:9)
+      at Object.<anonymous> (app.e2e-spec.ts:16:5)
+
+  console.error
+    {"level":"ERROR","timestamp":"2026-02-28T14:23:00.299Z","logger":"kafkajs","message":"[Connection] Connection error: ","broker":"localhost:9092","clientId":"elder-connect-client","stack":"AggregateError: \n    at internalConnectMultiple (node:net:1139:18)\n    at afterConnectMultiple (node:net:1712:7)\n    at TCPConnectWrap.callbackTrampoline (node:internal/async_hooks:130:17)"}
+
+      at ../node_modules/kafkajs/src/loggers/console.js:15:22
+      at ../node_modules/kafkajs/src/loggers/index.js:16:3
+      at Connection.logError (../node_modules/kafkajs/src/network/connection.js:111:7)
+      at Socket.onError (../node_modules/kafkajs/src/network/connection.js:215:14)
+
+  console.error
+    {"level":"ERROR","timestamp":"2026-02-28T14:23:00.301Z","logger":"kafkajs","message":"[BrokerPool] Failed to connect to seed broker, trying another broker from the list: Connection error: ","retryCount":7,"retryTime":1000}
+
+    [0m [90m 101 |[39m     [36mtry[39m {
+     [90m 102 |[39m       [36mthis[39m[33m.[39mlogger[33m.[39mlog([32m'Connecting to Kafka...'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 103 |[39m       [36mawait[39m [36mthis[39m[33m.[39mproducer[33m.[39mconnect()[33m;[39m
+     [90m     |[39m       [31m[1m^[22m[39m
+     [90m 104 |[39m       [36mawait[39m [36mthis[39m[33m.[39mconsumer[33m.[39mconnect()[33m;[39m
+     [90m 105 |[39m
+     [90m 106 |[39m       [90m// Subscribe to all topics[39m[0m
+
+      at ../node_modules/kafkajs/src/loggers/console.js:15:22
+      at Object.error (../node_modules/kafkajs/src/loggers/index.js:16:3)
+      at ../node_modules/kafkajs/src/cluster/brokerPool.js:99:23
+      at ../node_modules/kafkajs/src/cluster/index.js:107:14
+      at Cluster.connect (../node_modules/kafkajs/src/cluster/index.js:146:5)
+      at Object.connect (../node_modules/kafkajs/src/producer/index.js:219:7)
+      at KafkaService.onModuleInit (../src/device/services/kafka.service.ts:103:7)
+          at async Promise.all (index 0)
+      at callModuleInitHook (../node_modules/@nestjs/core/hooks/on-module-init.hook.js:43:5)
+      at Proxy.callInitHook (../node_modules/@nestjs/core/nest-application-context.js:242:13)
+      at Proxy.init (../node_modules/@nestjs/core/nest-application.js:103:9)
+      at Object.<anonymous> (app.e2e-spec.ts:16:5)
+
+  console.error
+    {"level":"ERROR","timestamp":"2026-02-28T14:23:01.322Z","logger":"kafkajs","message":"[Connection] Connection error: ","broker":"localhost:9092","clientId":"elder-connect-client","stack":"AggregateError: \n    at internalConnectMultiple (node:net:1139:18)\n    at afterConnectMultiple (node:net:1712:7)\n    at TCPConnectWrap.callbackTrampoline (node:internal/async_hooks:130:17)"}
+
+      at ../node_modules/kafkajs/src/loggers/console.js:15:22
+      at ../node_modules/kafkajs/src/loggers/index.js:16:3
+      at Connection.logError (../node_modules/kafkajs/src/network/connection.js:111:7)
+      at Socket.onError (../node_modules/kafkajs/src/network/connection.js:215:14)
+
+  console.error
+    {"level":"ERROR","timestamp":"2026-02-28T14:23:01.324Z","logger":"kafkajs","message":"[BrokerPool] Failed to connect to seed broker, trying another broker from the list: Connection error: ","retryCount":8,"retryTime":1000}
+
+    [0m [90m 101 |[39m     [36mtry[39m {
+     [90m 102 |[39m       [36mthis[39m[33m.[39mlogger[33m.[39mlog([32m'Connecting to Kafka...'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 103 |[39m       [36mawait[39m [36mthis[39m[33m.[39mproducer[33m.[39mconnect()[33m;[39m
+     [90m     |[39m       [31m[1m^[22m[39m
+     [90m 104 |[39m       [36mawait[39m [36mthis[39m[33m.[39mconsumer[33m.[39mconnect()[33m;[39m
+     [90m 105 |[39m
+     [90m 106 |[39m       [90m// Subscribe to all topics[39m[0m
+
+      at ../node_modules/kafkajs/src/loggers/console.js:15:22
+      at Object.error (../node_modules/kafkajs/src/loggers/index.js:16:3)
+      at ../node_modules/kafkajs/src/cluster/brokerPool.js:99:23
+      at ../node_modules/kafkajs/src/cluster/index.js:107:14
+      at Cluster.connect (../node_modules/kafkajs/src/cluster/index.js:146:5)
+      at Object.connect (../node_modules/kafkajs/src/producer/index.js:219:7)
+      at KafkaService.onModuleInit (../src/device/services/kafka.service.ts:103:7)
+          at async Promise.all (index 0)
+      at callModuleInitHook (../node_modules/@nestjs/core/hooks/on-module-init.hook.js:43:5)
+      at Proxy.callInitHook (../node_modules/@nestjs/core/nest-application-context.js:242:13)
+      at Proxy.init (../node_modules/@nestjs/core/nest-application.js:103:9)
+      at Object.<anonymous> (app.e2e-spec.ts:16:5)
+
+^C

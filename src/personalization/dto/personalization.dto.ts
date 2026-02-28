@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsJSON, IsOptional, IsString, IsUUID } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { IsEnum, IsObject, IsOptional, IsString } from 'class-validator';
 import { InteractionType } from '../entities/user-interaction.entity';
 
 export class CreateInteractionDto {
@@ -13,7 +14,17 @@ export class CreateInteractionDto {
     targetId?: string;
 
     @ApiPropertyOptional()
-    @IsJSON()
+    @Transform(({ value }) => {
+        if (typeof value === 'string') {
+            try {
+                return JSON.parse(value);
+            } catch (e) {
+                return value;
+            }
+        }
+        return value;
+    })
+    @IsObject()
     @IsOptional()
     metadata?: Record<string, any>;
 }
