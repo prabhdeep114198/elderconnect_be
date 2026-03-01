@@ -1,0 +1,89 @@
+[31m[Nest] 29940  - [39m28/02/2026, 7:56:48 pm [31m  ERROR[39m [38;5;3m[AllExceptionsFilter] [39m[31mPOST /v1/auth/register - Status: 400[39m
+BadRequestException: Bad Request Exception
+    at ValidationPipe.exceptionFactory (C:\Users\hima\Desktop\ElderConnectBackend\ElderConnect_BE\node_modules\@nestjs\common\pipes\validation.pipe.js:107:20)
+    at ValidationPipe.transform (C:\Users\hima\Desktop\ElderConnectBackend\ElderConnect_BE\node_modules\@nestjs\common\pipes\validation.pipe.js:74:30)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at resolveParamValue (C:\Users\hima\Desktop\ElderConnectBackend\ElderConnect_BE\node_modules\@nestjs\core\router\router-execution-context.js:148:23)
+    at async Promise.all (index 1)
+    at pipesFn (C:\Users\hima\Desktop\ElderConnectBackend\ElderConnect_BE\node_modules\@nestjs\core\router\router-execution-context.js:151:13)
+    at C:\Users\hima\Desktop\ElderConnectBackend\ElderConnect_BE\node_modules\@nestjs\core\router\router-execution-context.js:37:30
+[31m[Nest] 29940  - [39m28/02/2026, 7:56:48 pm [31m  ERROR[39m [38;5;3m[AllExceptionsFilter] [39m[31mPOST /v1/auth/login - Status: 400[39m
+BadRequestException: Bad Request Exception
+    at ValidationPipe.exceptionFactory (C:\Users\hima\Desktop\ElderConnectBackend\ElderConnect_BE\node_modules\@nestjs\common\pipes\validation.pipe.js:107:20)
+    at ValidationPipe.transform (C:\Users\hima\Desktop\ElderConnectBackend\ElderConnect_BE\node_modules\@nestjs\common\pipes\validation.pipe.js:74:30)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at resolveParamValue (C:\Users\hima\Desktop\ElderConnectBackend\ElderConnect_BE\node_modules\@nestjs\core\router\router-execution-context.js:148:23)
+    at async Promise.all (index 1)
+    at pipesFn (C:\Users\hima\Desktop\ElderConnectBackend\ElderConnect_BE\node_modules\@nestjs\core\router\router-execution-context.js:151:13)
+    at C:\Users\hima\Desktop\ElderConnectBackend\ElderConnect_BE\node_modules\@nestjs\core\router\router-execution-context.js:37:30
+[31m[Nest] 29940  - [39m28/02/2026, 7:56:48 pm [31m  ERROR[39m [38;5;3m[AllExceptionsFilter] [39m[31mPOST /v1/auth/login - Status: 401[39m
+UnauthorizedException: Invalid credentials
+    at AuthService.login (C:\Users\hima\Desktop\ElderConnectBackend\ElderConnect_BE\src\auth\auth.service.ts:79:13)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at AuthController.login (C:\Users\hima\Desktop\ElderConnectBackend\ElderConnect_BE\src\auth\auth.controller.ts:59:20)
+[31m[Nest] 29940  - [39m28/02/2026, 7:56:48 pm [31m  ERROR[39m [38;5;3m[AllExceptionsFilter] [39m[31mGET / - Status: 404[39m
+NotFoundException: Cannot GET /
+    at callback (C:\Users\hima\Desktop\ElderConnectBackend\ElderConnect_BE\node_modules\@nestjs\core\router\routes-resolver.js:77:19)
+    at C:\Users\hima\Desktop\ElderConnectBackend\ElderConnect_BE\node_modules\@nestjs\core\router\router-proxy.js:9:23
+    at Layer.handleRequest (C:\Users\hima\Desktop\ElderConnectBackend\ElderConnect_BE\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (C:\Users\hima\Desktop\ElderConnectBackend\ElderConnect_BE\node_modules\router\index.js:342:13)
+    at C:\Users\hima\Desktop\ElderConnectBackend\ElderConnect_BE\node_modules\router\index.js:297:9
+    at processParams (C:\Users\hima\Desktop\ElderConnectBackend\ElderConnect_BE\node_modules\router\index.js:582:12)
+    at next (C:\Users\hima\Desktop\ElderConnectBackend\ElderConnect_BE\node_modules\router\index.js:291:5)
+    at read (C:\Users\hima\Desktop\ElderConnectBackend\ElderConnect_BE\node_modules\body-parser\lib\read.js:53:5)
+    at urlencodedParser (C:\Users\hima\Desktop\ElderConnectBackend\ElderConnect_BE\node_modules\body-parser\lib\types\urlencoded.js:57:5)
+    at Layer.handleRequest (C:\Users\hima\Desktop\ElderConnectBackend\ElderConnect_BE\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (C:\Users\hima\Desktop\ElderConnectBackend\ElderConnect_BE\node_modules\router\index.js:342:13)
+    at C:\Users\hima\Desktop\ElderConnectBackend\ElderConnect_BE\node_modules\router\index.js:297:9
+    at processParams (C:\Users\hima\Desktop\ElderConnectBackend\ElderConnect_BE\node_modules\router\index.js:582:12)
+    at next (C:\Users\hima\Desktop\ElderConnectBackend\ElderConnect_BE\node_modules\router\index.js:291:5)
+    at read (C:\Users\hima\Desktop\ElderConnectBackend\ElderConnect_BE\node_modules\body-parser\lib\read.js:53:5)
+    at jsonParser (C:\Users\hima\Desktop\ElderConnectBackend\ElderConnect_BE\node_modules\body-parser\lib\types\json.js:88:5)
+    at Layer.handleRequest (C:\Users\hima\Desktop\ElderConnectBackend\ElderConnect_BE\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (C:\Users\hima\Desktop\ElderConnectBackend\ElderConnect_BE\node_modules\router\index.js:342:13)
+    at C:\Users\hima\Desktop\ElderConnectBackend\ElderConnect_BE\node_modules\router\index.js:297:9
+    at processParams (C:\Users\hima\Desktop\ElderConnectBackend\ElderConnect_BE\node_modules\router\index.js:582:12)
+    at next (C:\Users\hima\Desktop\ElderConnectBackend\ElderConnect_BE\node_modules\router\index.js:291:5)
+    at C:\Users\hima\Desktop\ElderConnectBackend\ElderConnect_BE\node_modules\@nestjs\platform-express\adapters\express-adapter.js:34:17
+    at Layer.handleRequest (C:\Users\hima\Desktop\ElderConnectBackend\ElderConnect_BE\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (C:\Users\hima\Desktop\ElderConnectBackend\ElderConnect_BE\node_modules\router\index.js:342:13)
+    at C:\Users\hima\Desktop\ElderConnectBackend\ElderConnect_BE\node_modules\router\index.js:297:9
+    at processParams (C:\Users\hima\Desktop\ElderConnectBackend\ElderConnect_BE\node_modules\router\index.js:582:12)
+    at next (C:\Users\hima\Desktop\ElderConnectBackend\ElderConnect_BE\node_modules\router\index.js:291:5)
+    at Function.handle (C:\Users\hima\Desktop\ElderConnectBackend\ElderConnect_BE\node_modules\router\index.js:186:3)
+    at Function.handle (C:\Users\hima\Desktop\ElderConnectBackend\ElderConnect_BE\node_modules\express\lib\application.js:177:15)
+    at Server.app (C:\Users\hima\Desktop\ElderConnectBackend\ElderConnect_BE\node_modules\express\lib\express.js:38:9)
+    at Server.<anonymous> (C:\Users\hima\Desktop\ElderConnectBackend\ElderConnect_BE\node_modules\@nestjs\platform-socket.io\node_modules\engine.io\build\server.js:648:34)
+    at Server.<anonymous> (C:\Users\hima\Desktop\ElderConnectBackend\ElderConnect_BE\node_modules\@nestjs\platform-socket.io\node_modules\socket.io\dist\index.js:330:28)
+    at Server.emit (node:events:518:28)
+    at parserOnIncoming (node:_http_server:1153:12)
+    at HTTPParser.parserOnHeadersComplete (node:_http_common:117:17)
+FAIL test/app.e2e-spec.ts (10.853 s)
+
+
+  ● Test suite failed to run
+
+    Nest could not find DataSource element (this provider does not exist in the current context)
+
+    [0m [90m 56 |[39m   afterAll([36masync[39m () [33m=>[39m {
+     [90m 57 |[39m     [36mif[39m (app) {
+    [31m[1m>[22m[39m[90m 58 |[39m       [36mawait[39m app[33m.[39mclose()[33m;[39m
+     [90m    |[39m       [31m[1m^[22m[39m
+     [90m 59 |[39m     }
+     [90m 60 |[39m   })[33m;[39m
+     [90m 61 |[39m[0m
+
+      at InstanceLinksHost.get (../node_modules/@nestjs/core/injector/instance-links-host.js:15:19)
+      at ModuleRef.find (../node_modules/@nestjs/core/injector/abstract-instance-resolver.js:8:60)
+      at ModuleRef.get (../node_modules/@nestjs/core/injector/module.js:391:29)
+      at TypeOrmCoreModule.onApplicationShutdown (../node_modules/@nestjs/typeorm/dist/typeorm-core.module.js:110:43)
+      at callAppShutdownHook (../node_modules/@nestjs/core/hooks/on-app-shutdown.hook.js:52:35)
+      at Proxy.callShutdownHook (../node_modules/@nestjs/core/nest-application-context.js:276:13)
+      at Proxy.close (../node_modules/@nestjs/core/nest-application-context.js:131:9)
+      at Object.<anonymous> (app.e2e-spec.ts:58:7)
+
+Test Suites: 1 failed, 1 total
+Tests:       4 passed, 4 total
+Snapshots:   0 total
+Time:        11.172 s
+Ran all test suites.
