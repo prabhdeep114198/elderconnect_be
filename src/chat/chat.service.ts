@@ -8,13 +8,11 @@ import { User } from '../auth/entities/user.entity';
 import { Vitals } from '../device/entities/vitals.entity';
 import { HealthAnalyticsService } from '../monitoring/analytics.service';
 import { UserProfile } from '../profile/entities/user-profile.entity';
-import { ChatRequestDto, ChatResponseDto, ContextScores, N8nPayload, UserContext } from './dto/chat.dto';
+import { ChatRequestDto, ChatResponseDto, ContextScores, UserContext } from './dto/chat.dto';
 
 @Injectable()
 export class ChatService {
     private readonly logger = new Logger(ChatService.name);
-    private readonly n8nWebhookUrl: string;
-    private readonly n8nApiKey: string;
 
     constructor(
         private readonly configService: ConfigService,
@@ -25,52 +23,96 @@ export class ChatService {
         @InjectRepository(Vitals, 'vitals')
         private readonly vitalsRepository: Repository<Vitals>,
         private readonly analyticsService: HealthAnalyticsService,
-    ) {
-        this.n8nWebhookUrl = this.configService.get<string>('n8n.webhookUrl') || '';
-        this.n8nApiKey = this.configService.get<string>('n8n.apiKey') || '';
-
-        if (!this.n8nWebhookUrl) {
-            this.logger.warn('N8N_WEBHOOK_URL is not defined in environment variables');
-        }
-    }
+    ) { }
 
     async sendMessage(userId: string, request: ChatRequestDto): Promise<ChatResponseDto> {
         const conversationId = randomUUID();
+        let safeContext: UserContext | null = null;
         try {
             this.logger.log(`Processing chat message for user ${userId}`);
 
             const fullContext = await this.loadUserContext(userId);
-            const safeContext = this.summarizeContext(fullContext);
+            safeContext = this.summarizeContext(fullContext);
 
-            const payload: N8nPayload = {
-                userId,
-                conversationId,
-                message: request.message,
-                context: safeContext,
-            };
+            // Create System Prompt
+            const scores = safeContext.scores || { physical: 0, mental: 0, sleep: 0 };
+            const lastMood = safeContext.lastMood || "neutral";
+            const recentVitals = safeContext.recentVitals || [];
+            const riskLevel = safeContext.riskLevel || "low";
 
-            // 4. Call N8N Webhook
-            const n8nResult = await this.callN8nWebhook(payload);
+            const recentVitalsStr = recentVitals.length > 0
+                ? recentVitals.map(v => `${v.type}: ${v.value} ${v.unit}`).join(", ")
+                : "None";
 
-            // Handle both object and array response from n8n
-            const n8nResponse = n8nResult ? (Array.isArray(n8nResult) ? n8nResult[0] : n8nResult) : null;
+            const systemPrompt = `
+You are a supportive health assistant for an elderly care application.
 
-            // 5. Return Response
+RULES:
+- Do NOT give medical diagnoses
+- Do NOT prescribe or change medications
+- Encourage professional help when risk is medium or high
+- Use simple, reassuring language
+- Never be alarming
+
+USER CONTEXT:
+Physical score: ${scores.physical}
+Mental score: ${scores.mental}
+Sleep score: ${scores.sleep}
+Last mood: ${lastMood}
+Recent vitals: ${recentVitalsStr}
+Risk level: ${riskLevel}
+
+Respond to the user message below.
+`.trim();
+
+            const userMessage = request.message && request.message.trim() !== "" ? request.message : "Hello!";
+
+            // Call HuggingFace
+            this.logger.debug('Calling HuggingFace API...');
+            const hfApiKey = this.configService.get<string>('HUGGINGFACE_API_KEY') || process.env.HUGGINGFACE_API_KEY;
+            const response = await fetch('https://router.huggingface.co/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${hfApiKey}`,
+                },
+                body: JSON.stringify({
+                    model: 'deepseek-ai/DeepSeek-V3-0324',
+                    messages: [
+                        { role: 'system', content: systemPrompt },
+                        { role: 'user', content: userMessage }
+                    ]
+                }),
+            });
+
+            if (!response.ok) {
+                const errText = await response.text();
+                this.logger.error(`HuggingFace API Error (${response.status}): ${errText}`);
+                throw new Error(`HuggingFace API responded with status: ${response.status}`);
+            }
+
+            const responseData = await response.json();
+            let reply = responseData.choices?.[0]?.message?.content || "I'm here to help.";
+
+            if (riskLevel === 'high') {
+                reply += "\n\nIf you're concerned, please consider contacting your caregiver or healthcare provider.";
+            }
+
             return {
-                reply: n8nResponse?.reply ||
-                    n8nResponse?.output ||
-                    n8nResponse?.text ||
-                    (typeof n8nResponse === 'string' && n8nResponse.length > 0 ? n8nResponse : null) ||
-                    this.getFallbackMessage(safeContext),
-                conversationId: n8nResponse?.conversationId || conversationId,
+                reply,
+                conversationId,
             };
 
         } catch (error) {
             this.logger.error(`Error in chat flow: ${error.message}`, error.stack);
 
             // Fallback response instead of crashing for the user
+            const reply = safeContext
+                ? this.getFallbackMessage(safeContext)
+                : "I'm having a little trouble connecting to my brain right now, but I'm still here for you. Could you repeat that?";
+
             return {
-                reply: "I'm having a little trouble connecting to my brain right now, but I'm still here for you. Could you repeat that?",
+                reply,
                 conversationId,
             };
         }
@@ -189,70 +231,6 @@ export class ChatService {
         };
     }
 
-    /**
-     * Sends the payload to the private N8N webhook.
-     */
-    private async callN8nWebhook(payload: N8nPayload): Promise<any> {
-        if (!this.n8nWebhookUrl) {
-            this.logger.debug('No N8N URL configured. Returning mock response.');
-            return { reply: "I see. Tell me more about how you are feeling (Mock Response - N8N not connected)." };
-        }
 
-        try {
-            const targetUrl = this.n8nWebhookUrl;
-
-            this.logger.debug(`Calling N8N Webhook: ${targetUrl}`);
-
-            // Add 'text' field for better compatibility with default n8n AI nodes
-            const enrichedPayload = {
-                ...payload,
-                text: payload.message // Some n8n nodes expect 'text' instead of 'message'
-            };
-
-            this.logger.debug(`Payload sent to N8N: ${JSON.stringify(enrichedPayload)}`);
-
-            const response = await fetch(targetUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(this.n8nApiKey ? { 'X-API-KEY': this.n8nApiKey } : {}),
-                },
-                body: JSON.stringify(enrichedPayload),
-            });
-
-
-
-            const responseText = await response.text();
-            this.logger.debug(`N8N Status: ${response.status}`);
-
-            // Log headers to see n8n internal hints
-            const headers: Record<string, string> = {};
-            response.headers.forEach((val, key) => headers[key] = val);
-            this.logger.debug(`N8N Response Headers: ${JSON.stringify(headers)}`);
-
-            this.logger.debug(`N8N Raw Response: "${responseText}"`);
-
-            if (!response.ok) {
-                this.logger.error(`N8N Error (${response.status}): ${responseText}`);
-                throw new Error(`N8N responded with status: ${response.status}`);
-            }
-
-            if (!responseText || responseText.trim() === '') {
-                this.logger.warn('N8N returned an empty response');
-                return null;
-            }
-
-            try {
-                return JSON.parse(responseText);
-            } catch (e) {
-                this.logger.warn(`Failed to parse N8N response as JSON. Raw response: ${responseText}`);
-                return responseText; // Return as raw string
-            }
-        } catch (error) {
-            this.logger.error(`Failed to call N8N: ${error.message}`);
-            // propagate error to be caught by sendMessage catch block
-            throw error;
-        }
-    }
 
 }

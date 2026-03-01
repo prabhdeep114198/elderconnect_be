@@ -36,9 +36,4 @@ export interface UserContext {
   riskLevel: 'low' | 'medium' | 'high';
 }
 
-export interface N8nPayload {
-  userId: string;
-  conversationId: string;
-  message: string;
-  context: UserContext;
-}
+
