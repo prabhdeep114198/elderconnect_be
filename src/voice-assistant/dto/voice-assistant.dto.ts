@@ -18,7 +18,7 @@ export class UserContextDto {
 export class VoiceAssistantRequestDto {
     @ApiProperty({ example: 'I want to schedule a doctor appointment tomorrow at 10 AM' })
     @IsString()
-    @IsNotEmpty()
+    @IsOptional()
     text: string;
 
     @ApiProperty({ type: UserContextDto })
