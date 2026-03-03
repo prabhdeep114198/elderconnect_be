@@ -2,7 +2,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import FormData from 'form-data';
 import axios from 'axios';
-import * as fs from 'fs';
 
 /** New Hugging Face Inference Providers base URL (old api-inference.huggingface.co returns 410 Gone). */
 const HF_INFERENCE_ASR_URL = 'https://router.huggingface.co/hf-inference/models/openai/whisper-large-v3';
@@ -36,17 +35,13 @@ export class VoiceService {
         } catch (error) {
             this.logger.error(`Transcription failed: ${error.message}`);
             throw new Error(error instanceof Error ? error.message : 'Failed to transcribe audio.');
-        } finally {
-            if (file?.path && fs.existsSync(file.path)) {
-                fs.unlinkSync(file.path);
-            }
         }
     }
 
     private async transcribeOpenAI(file: Express.Multer.File, apiKey: string): Promise<string> {
         this.logger.log('Transcribing via OpenAI...');
         const formData = new FormData();
-        formData.append('file', fs.createReadStream(file.path), {
+        formData.append('file', file.buffer, {
             filename: file.originalname,
             contentType: file.mimetype,
         });
@@ -68,7 +63,7 @@ export class VoiceService {
     private async transcribeHuggingFace(file: Express.Multer.File, token: string): Promise<string> {
         this.logger.log(`Transcribing via Hugging Face (Model: whisper-large-v3, Mime: ${file.mimetype})...`);
         try {
-            const audioBuffer = fs.readFileSync(file.path);
+            const audioBuffer = file.buffer;
 
             const response = await axios.post<{ text?: string; transcript?: string }>(
                 HF_INFERENCE_ASR_URL,
