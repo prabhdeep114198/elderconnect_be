@@ -6,19 +6,26 @@ import { AppModule } from './app.module';
 import compression from 'compression';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
-import { getMetadataArgsStorage } from 'typeorm';
+import { ExpressAdapter } from '@nestjs/platform-express';
+import express from 'express';
+import serverless from 'serverless-http';
+
+// Cache the server instance to avoid cold-start reinitialization
+let cachedServer: any;
 
 async function bootstrap() {
-  const logger = new Logger('Bootstrap');
-  logger.log('Bootstrapping Elder Connect API...');
+  if (cachedServer) return cachedServer;
 
-  const app = await NestFactory.create(AppModule, {
+  const expressApp = express();
+  const adapter = new ExpressAdapter(expressApp);
+
+  const app = await NestFactory.create(AppModule, adapter, {
     logger: ['error', 'warn', 'log', 'debug', 'verbose'],
   });
 
   const configService = app.get(ConfigService);
-  const port = configService.get<number>('app.port', 3000);
   const environment = configService.get<string>('app.environment', 'development');
+  const port = configService.get<number>('app.port', 3000);
 
   // Security middleware
   app.use(
@@ -93,39 +100,17 @@ async function bootstrap() {
         operationsSorter: 'alpha',
       },
     });
-
-    logger.log(`Swagger documentation available at http://localhost:${port}/api/docs`);
   }
 
-  // 🔹 Debug: print all registered TypeORM entities
-  logger.log(
-    'Registered TypeORM entities: ' +
-    getMetadataArgsStorage().tables.map((t) => t.target.toString()).join(', '),
-  );
+  // Initialize the application
+  await app.init();
 
-  // Graceful shutdown
-  process.on('SIGTERM', async () => {
-    logger.log('SIGTERM received, shutting down gracefully');
-    await app.close();
-    process.exit(0);
-  });
-
-  process.on('SIGINT', async () => {
-    logger.log('SIGINT received, shutting down gracefully');
-    await app.close();
-    process.exit(0);
-  });
-
-  // Start the application
-  await app.listen(port, '0.0.0.0');
-
-  logger.log(`🚀 Elder Connect API is running on: http://localhost:${port}/api`);
-  logger.log(`📚 API Documentation: http://localhost:${port}/api/docs`);
-  logger.log(`🏥 Health Check: http://localhost:${port}/health`);
-  logger.log(`🌍 Environment: ${environment}`);
+  cachedServer = serverless(expressApp);
+  return cachedServer;
 }
 
-bootstrap().catch((error) => {
-  console.error('Failed to start the application:', error);
-  process.exit(1);
-});
+// Export the handler for Vercel
+export default async (req: any, res: any) => {
+  const server = await bootstrap();
+  return server(req, res);
+};
