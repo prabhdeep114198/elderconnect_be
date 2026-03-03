@@ -105,8 +105,24 @@ async function bootstrap() {
   // Initialize the application
   await app.init();
 
+  // If not running on Vercel, start the server
+  if (!process.env.VERCEL) {
+    await app.listen(port);
+    const logger = new Logger('Bootstrap');
+    logger.log(`Application is running on: http://localhost:${port}/api`);
+  }
+
   cachedServer = serverless(expressApp);
   return cachedServer;
+}
+
+// Start for non-Vercel environments (like Docker/Railway)
+if (!process.env.VERCEL) {
+  bootstrap().catch((err) => {
+    const logger = new Logger('Bootstrap');
+    logger.error('Failed to start application', err);
+    process.exit(1);
+  });
 }
 
 // Export the handler for Vercel
