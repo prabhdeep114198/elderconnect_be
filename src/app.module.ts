@@ -130,7 +130,7 @@ import { UserInteraction } from './personalization/entities/user-interaction.ent
         logging: configService.get('app.environment') === 'development',
         // Use the database config's SSL setting so env flags like requiring SSL are honored
         ssl: configService.get('database.auth.ssl'),
-        extra: { max: 20, idleTimeoutMillis: 30000, connectionTimeoutMillis: 2000 },
+        extra: { max: 5, idleTimeoutMillis: 30000, connectionTimeoutMillis: 5000 },
       }),
       inject: [ConfigService],
     }),
@@ -161,6 +161,7 @@ import { UserInteraction } from './personalization/entities/user-interaction.ent
         synchronize: true, // temporary, will auto-create tables
         logging: configService.get('app.environment') === 'development',
         ssl: configService.get('database.profile.ssl'),
+        extra: { max: 5, idleTimeoutMillis: 30000, connectionTimeoutMillis: 5000 },
       }),
       inject: [ConfigService],
     }),
@@ -180,7 +181,7 @@ import { UserInteraction } from './personalization/entities/user-interaction.ent
         synchronize: false, // Set to false to prevent data loss and use migrations instead
         logging: configService.get('app.environment') === 'development',
         ssl: configService.get('database.vitals.ssl'),
-        extra: { max: 30, idleTimeoutMillis: 30000, connectionTimeoutMillis: 2000 },
+        extra: { max: 5, idleTimeoutMillis: 30000, connectionTimeoutMillis: 5000 },
       }),
       inject: [ConfigService],
     }),
@@ -200,7 +201,7 @@ import { UserInteraction } from './personalization/entities/user-interaction.ent
         synchronize: false, // Set to false to prevent data loss and use migrations instead
         logging: configService.get('app.environment') === 'development',
         ssl: configService.get('database.media.ssl'),
-        extra: { max: 15, idleTimeoutMillis: 30000, connectionTimeoutMillis: 2000 },
+        extra: { max: 5, idleTimeoutMillis: 30000, connectionTimeoutMillis: 5000 },
       }),
       inject: [ConfigService],
     }),
@@ -220,7 +221,7 @@ import { UserInteraction } from './personalization/entities/user-interaction.ent
         synchronize: false, // Set to false to prevent data loss and use migrations instead
         logging: configService.get('app.environment') === 'development',
         ssl: configService.get('database.audit.ssl'),
-        extra: { max: 25, idleTimeoutMillis: 30000, connectionTimeoutMillis: 2000 },
+        extra: { max: 5, idleTimeoutMillis: 30000, connectionTimeoutMillis: 5000 },
       }),
       inject: [ConfigService],
     }),
