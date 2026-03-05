@@ -81,9 +81,10 @@ export class ProfileService {
   async updateProfile(userId: string, updateProfileDto: UpdateProfileDto): Promise<UserProfile> {
     const profile = await this.getProfile(userId);
 
-    if (updateProfileDto.avatar || updateProfileDto.name) {
+    if (updateProfileDto.avatar || updateProfileDto.name || updateProfileDto.isOnboarded !== undefined) {
       const userUpdate: any = {};
       if (updateProfileDto.avatar) userUpdate.avatar = updateProfileDto.avatar;
+      if (updateProfileDto.isOnboarded !== undefined) userUpdate.isOnboarded = updateProfileDto.isOnboarded;
 
       if (updateProfileDto.name) {
         const parts = updateProfileDto.name.split(' ');

@@ -67,7 +67,10 @@ export class AuthService {
     const { password, emailVerificationToken, ...userResponse } = savedUser;
 
     return {
-      user: userResponse,
+      user: {
+        ...userResponse,
+        isOnboarded: savedUser.isOnboarded || false,
+      },
       token,
     };
   }
@@ -91,7 +94,10 @@ export class AuthService {
     const { password, emailVerificationToken, resetPasswordToken, ...userResponse } = user;
 
     return {
-      user: userResponse,
+      user: {
+        ...userResponse,
+        isOnboarded: user.isOnboarded || false,
+      },
       token,
     };
   }

@@ -49,6 +49,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       isSubscribed: user.isSubscribed,
       subscriptionExpiresAt: user.subscriptionExpiresAt,
       avatar: user.avatar,
+      isOnboarded: user.isOnboarded,
     };
   }
 }

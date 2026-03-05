@@ -89,6 +89,9 @@ export class User {
   createdAt: Date;
 
   @Column({ type: 'boolean', default: false })
+  isOnboarded: boolean;
+
+  @Column({ type: 'boolean', default: false })
   isSubscribed: boolean;
 
   @Column({ type: 'timestamp', nullable: true })

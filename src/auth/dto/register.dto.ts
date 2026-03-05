@@ -9,6 +9,7 @@ import {
   IsEnum,
   IsArray,
   ArrayMinSize,
+  IsBoolean,
 } from 'class-validator';
 import { UserRole } from '../../common/enums/user-role.enum';
 
@@ -77,4 +78,13 @@ export class RegisterDto {
   })
   @IsOptional()
   preferences?: Record<string, any>;
+
+  @ApiProperty({
+    description: 'Whether onboarding is completed',
+    example: true,
+    required: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  isOnboarded?: boolean;
 }

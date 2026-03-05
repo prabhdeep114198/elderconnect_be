@@ -257,6 +257,15 @@ export class CreateProfileDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @ApiProperty({
+    description: 'Whether onboarding is completed',
+    example: true,
+    required: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  isOnboarded?: boolean;
 }
 
 export class UpdateProfileDto extends CreateProfileDto {
