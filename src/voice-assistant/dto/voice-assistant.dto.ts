@@ -46,6 +46,10 @@ export type IntentType =
     | 'LOG_VITAL'
     | 'REMINDER'
     | 'QUERY_INFO'
+    | 'NAVIGATE'
+    | 'EMERGENCY_SOS'
+    | 'FALL_RISK_CHECK'
+    | 'MEDICATION_CHECK'
     | 'ERROR'
     | 'UNKNOWN';
 

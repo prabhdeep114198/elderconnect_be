@@ -329,9 +329,10 @@ export class ProfileService {
       // 1. Calculate Expected for this day
       // Filter meds active on this day
       const activeMeds = medications.filter(m => {
-        const start = new Date(m.startDate).toISOString().split('T')[0];
-        const end = m.endDate ? new Date(m.endDate).toISOString().split('T')[0] : '9999-12-31';
-        return dayStr >= start && dayStr <= end;
+        const start = new Date(m.startDate).getTime();
+        const end = m.endDate ? new Date(m.endDate).getTime() : new Date('9999-12-31').getTime();
+        const current = dateIterator.getTime();
+        return (current + 86400000) >= start && (current - 86400000) <= end;
       });
 
       const expected = activeMeds.reduce((acc, med) => acc + getDailyDoseCount(med), 0);
@@ -365,7 +366,8 @@ export class ProfileService {
     // Let's just return raw numbers and let frontend interpret or keep simple.
     // "Missed" in `stats` usually means "Log status is MISSED".
     // If we rely on logs, we check `logs` for today with status MISSED.
-    const logsToday = logs.filter(l => new Date(l.scheduledTime).toDateString() === new Date().toDateString());
+    const currentDateStr = endDate.toISOString().split('T')[0];
+    const logsToday = logs.filter(l => new Date(l.scheduledTime).toISOString().split('T')[0] === currentDateStr);
     const explicitlyMissed = logsToday.filter(l => l.status === MedicationLogStatus.MISSED).length;
 
     const totalExpected = dailyStats.reduce((acc, d) => acc + d.expected, 0);
@@ -516,7 +518,28 @@ export class ProfileService {
         break;
     }
 
-    return this.healthMetricRepository.save(metric);
+    try {
+      return await this.healthMetricRepository.save(metric);
+    } catch (error) {
+      if (error.code === '23505' || error.message?.includes('unique constraint')) {
+        // Race condition: another request created the record for this day just now.
+        // Fetch the existing record and update it instead.
+        const existing = await this.healthMetricRepository.findOne({
+          where: { userProfileId: profile.id, date: date },
+        });
+        if (existing) {
+          switch (updateDto.type) {
+            case 'steps': existing.steps = updateDto.value; break;
+            case 'heartRate': existing.heartRate = updateDto.value; break;
+            case 'sleep': existing.sleepHours = updateDto.value; break;
+            case 'water': existing.waterIntake = updateDto.value; break;
+            case 'oxygenSaturation': existing.oxygenSaturation = updateDto.value; break;
+          }
+          return await this.healthMetricRepository.save(existing);
+        }
+      }
+      throw error;
+    }
   }
 
   async getDailyMetrics(userId: string, date: Date = new Date()): Promise<DailyHealthMetric> {

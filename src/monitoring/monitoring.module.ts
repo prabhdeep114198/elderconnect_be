@@ -6,10 +6,13 @@ import { MetricsService } from './metrics.service';
 
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DailyHealthMetric } from '../profile/entities/daily-health-metric.entity';
+import { UserProfile } from '../profile/entities/user-profile.entity';
 import { ProfileModule } from '../profile/profile.module';
 import { AnalyticsController } from './analytics.controller';
 import { HealthAnalyticsService } from './analytics.service';
 import { DebugController } from './debug.controller';
+import { FallRiskController } from './fall-risk.controller';
+import { FallRiskService } from './fall-risk.service';
 
 import { SOSAlert } from '../device/entities/sos-alert.entity';
 import { TelemetryData } from '../device/entities/telemetry.entity';
@@ -22,6 +25,7 @@ import { Medication } from '../profile/entities/medication.entity';
   imports: [
     TypeOrmModule.forFeature([
       DailyHealthMetric,
+      UserProfile,
       Appointment,
       MedicationLog,
       Medication,
@@ -35,8 +39,8 @@ import { Medication } from '../profile/entities/medication.entity';
     ], 'vitals'),
     ProfileModule,
   ],
-  controllers: [HealthController, AnalyticsController, DebugController],
-  providers: [HealthService, MetricsService, HealthAnalyticsService],
-  exports: [HealthService, MetricsService, HealthAnalyticsService],
+  controllers: [HealthController, AnalyticsController, DebugController, FallRiskController],
+  providers: [HealthService, MetricsService, HealthAnalyticsService, FallRiskService],
+  exports: [HealthService, MetricsService, HealthAnalyticsService, FallRiskService],
 })
 export class MonitoringModule { }

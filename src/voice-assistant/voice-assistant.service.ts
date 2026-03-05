@@ -33,7 +33,7 @@ Your job is to:
 4. Output STRICT, backend-ready JSON
 
 You MUST classify every request into EXACTLY ONE of these values:
-CREATE_EVENT | LOG_VITAL | REMINDER | QUERY_INFO | ERROR | UNKNOWN
+CREATE_EVENT | LOG_VITAL | REMINDER | QUERY_INFO | NAVIGATE | EMERGENCY_SOS | FALL_RISK_CHECK | MEDICATION_CHECK | ERROR | UNKNOWN
 
 The incoming request ALWAYS includes a JWT.
 You MUST return the SAME jwt value unchanged.
@@ -118,6 +118,44 @@ FORMAT FOR QUERY_INFO:
   }
 }
 
+FORMAT FOR NAVIGATE (Opening a screen or section of the app):
+{
+  "typeOfRequest": "NAVIGATE",
+  "correctedText": "...",
+  "message": "friendly response e.g. 'Opening your Fall Risk dashboard.'",
+  "jwt": "same string",
+  "data": {
+    "destination": "one of: home | profile | health | analytics | settings | fall risk | reminders | events | music | chatbot | video call"
+  }
+}
+
+FORMAT FOR EMERGENCY_SOS (User is in danger, needs help):
+{
+  "typeOfRequest": "EMERGENCY_SOS",
+  "correctedText": "...",
+  "message": "Stay calm, I am alerting your emergency contacts right now.",
+  "jwt": "same string",
+  "data": {}
+}
+
+FORMAT FOR FALL_RISK_CHECK (User asks about their fall risk):
+{
+  "typeOfRequest": "FALL_RISK_CHECK",
+  "correctedText": "...",
+  "message": "Sure, let me check your fall risk score.",
+  "jwt": "same string",
+  "data": {}
+}
+
+FORMAT FOR MEDICATION_CHECK (User asks about their medications):
+{
+  "typeOfRequest": "MEDICATION_CHECK",
+  "correctedText": "...",
+  "message": "Let me look up your medications.",
+  "jwt": "same string",
+  "data": {}
+}
+
 FORMAT FOR ERROR / UNKNOWN:
 {
   "typeOfRequest": "ERROR" | "UNKNOWN",
@@ -126,6 +164,21 @@ FORMAT FOR ERROR / UNKNOWN:
   "jwt": "same string",
   "data": {}
 }
+
+NAVIGATION KEYWORD GUIDE (use these to detect NAVIGATE intent):
+- "go to", "open", "show me", "take me to", "navigate to" → NAVIGATE
+- "fall risk", "my risk" → destination: "fall risk"
+- "home", "main screen", "dashboard" → destination: "home"
+- "profile", "my profile" → destination: "profile"
+- "music", "play music" → destination: "music"
+- "reminders", "my reminders" → destination: "reminders"
+- "chatbot", "chat", "AI assistant" → destination: "chatbot"
+- "video call", "call family" → destination: "video call"
+- "settings" → destination: "settings"
+- "events", "social events" → destination: "events"
+
+EMERGENCY KEYWORDS (use EMERGENCY_SOS intent):
+- "help me", "emergency", "SOS", "I fell", "call for help", "I need help", "call 911"
 
 STRICT RULES:
 - Output ONLY JSON
@@ -228,6 +281,35 @@ export class VoiceAssistantService {
 
             case 'QUERY_INFO':
                 return this.handleQueryInfo(parsed, userId, originalText);
+
+            case 'NAVIGATE':
+                // Navigation is handled on the frontend via the response
+                return {
+                    success: true,
+                    action: 'NAVIGATE',
+                    originalText,
+                    correctedText: parsed.correctedText || text,
+                    message: parsed.message || 'Navigating...',
+                    timestamp: new Date().toISOString(),
+                    data: parsed.data,
+                };
+
+            case 'EMERGENCY_SOS':
+                // Frontend will trigger the SOS flow
+                return {
+                    success: true,
+                    action: 'EMERGENCY_SOS',
+                    originalText,
+                    correctedText: parsed.correctedText || text,
+                    message: parsed.message || 'Initiating emergency SOS.',
+                    timestamp: new Date().toISOString(),
+                };
+
+            case 'FALL_RISK_CHECK':
+                return this.handleFallRiskCheck(userId, originalText, parsed.correctedText || text);
+
+            case 'MEDICATION_CHECK':
+                return this.handleMedicationCheck(userId, originalText, parsed.correctedText || text);
 
             case 'ERROR':
                 return {
@@ -506,6 +588,90 @@ export class VoiceAssistantService {
                 return { percentage: parseFloat(rawValue) };
             default:
                 return { value: parseFloat(rawValue) || rawValue };
+        }
+    }
+
+
+    private async handleFallRiskCheck(userId: string, originalText: string, correctedText: string): Promise<VoiceAssistantResponse> {
+        try {
+            const profile = await this.profileRepository.findOne({ where: { userId } });
+            if (!profile) {
+                return {
+                    success: false, action: 'FALL_RISK_CHECK', originalText, correctedText,
+                    message: "I couldn't find your health profile to assess fall risk.",
+                    timestamp: new Date().toISOString(),
+                };
+            }
+
+            let details: string[] = [];
+
+            if (profile.age && profile.age > 75) details.push('age over 75');
+            if (profile.bmi && (profile.bmi > 30 || profile.bmi < 18)) details.push('BMI outside healthy range');
+            const hasBalance = profile.medicalConditions?.some(c =>
+                ['arthritis', 'vertigo', 'dizziness', 'parkinson'].includes(c.toLowerCase())
+            );
+            if (hasBalance) details.push('balance-related condition');
+
+            const level = details.length === 0 ? 'low' : details.length === 1 ? 'moderate' : 'elevated';
+
+            const spoken = details.length > 0
+                ? `Your fall risk is ${level} due to: ${details.join(', ')}. I recommend checking your Fall Risk dashboard for detailed recommendations.`
+                : "Great news! Your fall risk assessment looks low based on your profile. Keep staying active!";
+
+            return {
+                success: true,
+                action: 'FALL_RISK_CHECK',
+                originalText,
+                correctedText,
+                message: spoken,
+                timestamp: new Date().toISOString(),
+                data: { riskLevel: level, factors: details },
+            };
+        } catch (err) {
+            this.logger.error(`[VoiceAssistant] FALL_RISK_CHECK failed: ${err.message}`);
+            return this.buildErrorResponse(originalText, 'Sorry, I could not check your fall risk right now.', userId);
+        }
+    }
+
+    private async handleMedicationCheck(userId: string, originalText: string, correctedText: string): Promise<VoiceAssistantResponse> {
+        try {
+            const profile = await this.profileRepository.findOne({ where: { userId } });
+            if (!profile) {
+                return {
+                    success: false, action: 'MEDICATION_CHECK', originalText, correctedText,
+                    message: "I couldn't find your health profile to look up medications.",
+                    timestamp: new Date().toISOString(),
+                };
+            }
+
+            const medications = await this.medicationRepository.find({
+                where: { userProfileId: profile.id, isActive: true },
+                take: 5,
+            });
+
+            if (medications.length === 0) {
+                return {
+                    success: true, action: 'MEDICATION_CHECK', originalText, correctedText,
+                    message: "You have no active medications on file. You can add them through the profile section.",
+                    timestamp: new Date().toISOString(),
+                };
+            }
+
+            const medNames = medications.map(m => `${m.name}${m.dosage ? ', ' + m.dosage : ''}`).join('. ');
+            const message = `You have ${medications.length} active medication${medications.length > 1 ? 's' : ''}: ${medNames}.`;
+
+            return {
+                success: true,
+                action: 'MEDICATION_CHECK',
+                originalText,
+                correctedText,
+                message,
+                timestamp: new Date().toISOString(),
+                data: { count: medications.length, medications: medications.map(m => ({ name: m.name, dosage: m.dosage })) },
+            };
+        } catch (err) {
+            this.logger.error(`[VoiceAssistant] MEDICATION_CHECK failed: ${err.message}`);
+            return this.buildErrorResponse(originalText, 'Sorry, I could not look up your medications right now.', userId);
         }
     }
 }
