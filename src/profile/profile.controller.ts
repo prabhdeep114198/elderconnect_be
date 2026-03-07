@@ -100,6 +100,37 @@ export class ProfileController {
     };
   }
 
+  @Get('monitored-elders')
+  @Roles(UserRole.CAREGIVER, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Get elders monitored by this caregiver' })
+  async getMonitoredElders(@Param('userId') userId: string) {
+    const elders = await this.profileService.getMonitoredElders(userId);
+    return {
+      message: 'Monitored elders retrieved successfully',
+      data: { elders },
+    };
+  }
+
+  @Post('link-elder/:elderId')
+  @Roles(UserRole.ADMIN, UserRole.CAREGIVER)
+  @ApiOperation({ summary: 'Link an elder to this caregiver' })
+  async linkElder(
+    @Param('userId') caregiverId: string,
+    @Param('elderId') elderId: string,
+  ) {
+    const profile = await this.profileService.linkElder(elderId, caregiverId);
+    return {
+      message: 'Elder linked successfully',
+      data: { profile },
+    };
+  }
+
+  @Get('seed/demo')
+  @ApiOperation({ summary: 'Seed demo data for testing role-based access' })
+  async seedDemoData() {
+    return this.profileService.seedDemoData();
+  }
+
   @Delete('profile')
   @HttpCode(HttpStatus.NO_CONTENT)
   @Roles(UserRole.ADMIN)

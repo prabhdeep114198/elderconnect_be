@@ -18,6 +18,7 @@ import { CreateAppointmentDto, UpdateAppointmentDto } from './dto/appointment.dt
 import { SocialEvent } from './entities/social-event.entity';
 import { UpdateHealthMetricDto } from './dto/update-health-metric.dto';
 import { User } from '../auth/entities/user.entity';
+import { UserRole } from '../common/enums/user-role.enum';
 
 @Injectable()
 export class ProfileService {
@@ -912,7 +913,7 @@ export class ProfileService {
         id: 'hydration_hero',
         name: 'Hydration Hero',
         description: 'Reached 8+ cups of water in a single day!',
-        icon: 'water',
+        icon: 'heart',
         color: '#2196F3',
         date: new Date(),
       });
@@ -931,6 +932,161 @@ export class ProfileService {
 
     return {
       achievements
+    };
+  }
+
+  // Caregiver Features
+  async getMonitoredElders(caregiverId: string): Promise<any[]> {
+    const profiles = await this.profileRepository.find({
+      where: { caregiverId },
+    });
+
+    if (profiles.length === 0) return [];
+
+    const elderUserIds = profiles.map(p => p.userId);
+    const users = await this.userRepository.findByIds(elderUserIds);
+
+    // Fetch today's metrics for all elders
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const results: any[] = [];
+    for (const profile of profiles) {
+      const user = users.find(u => u.id === profile.userId);
+      if (!user) continue;
+
+      const dailyMetric = await this.healthMetricRepository.findOne({
+        where: { userProfileId: profile.id, date: today },
+      });
+
+      // Calculate status
+      let status = 'good';
+      let statusIndicator = 'Safe';
+      
+      if (dailyMetric) {
+        if (dailyMetric.heartRate && (dailyMetric.heartRate > 100 || dailyMetric.heartRate < 50)) {
+          status = 'critical';
+          statusIndicator = 'Critical';
+        } else if (dailyMetric.heartRate && (dailyMetric.heartRate > 90 || dailyMetric.heartRate < 60)) {
+          status = 'warning';
+          statusIndicator = 'Warning';
+        }
+      }
+
+      results.push({
+        id: user.id,
+        name: `${user.firstName} ${user.lastName}`,
+        status: statusIndicator,
+        statusType: status, // 'good', 'warning', 'critical'
+        lastSeen: 'Active now',
+        battery: Math.floor(Math.random() * 30) + 70, // Mock battery for demo
+        risk: status === 'critical' ? 'high' : status === 'warning' ? 'medium' : 'low',
+        avatar: user.avatar,
+        metrics: {
+          steps: dailyMetric?.steps || 0,
+          heartRate: dailyMetric?.heartRate || 72,
+          sleepHours: dailyMetric?.sleepHours || 0,
+        }
+      });
+    }
+
+    return results;
+  }
+
+  async linkElder(elderId: string, caregiverId: string): Promise<UserProfile> {
+    const profile = await this.getProfile(elderId);
+    profile.caregiverId = caregiverId;
+    return this.profileRepository.save(profile);
+  }
+
+  async seedDemoData(): Promise<any> {
+    const caregiverEmail = 'family@elderconnect.com';
+    const elderEmails = [
+      'martha@demo.com',
+      'george@demo.com',
+      'helen@demo.com'
+    ];
+    const password = 'password123';
+
+    // 1. Create or Find Caregiver
+    let caregiver = await this.userRepository.findOne({ where: { email: caregiverEmail } });
+    if (!caregiver) {
+      caregiver = this.userRepository.create({
+        email: caregiverEmail,
+        password,
+        firstName: 'Emma',
+        lastName: 'Caregiver',
+        roles: [UserRole.CAREGIVER],
+        isOnboarded: true,
+        isActive: true
+      });
+      await this.userRepository.save(caregiver);
+      await this.createProfile(caregiver.id, {
+        name: 'Emma Caregiver',
+        phoneNumber: '1234567890'
+      } as any);
+    }
+
+    const demoData: any[] = [];
+
+    // 2. Create Elders and Link them
+    const names = ['Martha Stewart', 'George Miller', 'Helen Keller'];
+    const bios = [
+      'Enjoys gardening and morning walks.',
+      'Retired engineer, loves solving puzzles.',
+      'An avid reader and music lover.'
+    ];
+
+    for (let i = 0; i < elderEmails.length; i++) {
+      let elder = await this.userRepository.findOne({ where: { email: elderEmails[i] } });
+      if (!elder) {
+        elder = this.userRepository.create({
+          email: elderEmails[i],
+          password,
+          firstName: names[i].split(' ')[0],
+          lastName: names[i].split(' ')[1],
+          roles: [UserRole.ELDER],
+          isOnboarded: true,
+          isActive: true
+        });
+        await this.userRepository.save(elder);
+        const birthDate = new Date();
+        birthDate.setFullYear(birthDate.getFullYear() - (70 + Math.floor(Math.random() * 20))); // 70-90 years old
+        await this.createProfile(elder.id, {
+          name: names[i],
+          phoneNumber: `987654321${i}`,
+          notes: bios[i],
+          dateOfBirth: birthDate
+        } as any);
+      }
+
+      // Link to caregiver
+      await this.linkElder(elder.id, caregiver.id);
+
+      // Seed health data
+      await this.seedHealthData(elder.id, 14);
+
+      // Seed some medications
+      const medNames = ['Aspirin', 'Lisinopril', 'Metformin'];
+      await this.createMedication(elder.id, {
+        name: medNames[i],
+        dosage: '10mg',
+        frequency: 'daily',
+        time: '08:00',
+        startDate: new Date().toISOString(),
+        reminderEnabled: true,
+        reminderMinutesBefore: 15
+      } as any);
+
+      demoData.push({ email: elderEmails[i], name: names[i] });
+    }
+
+    return {
+      message: 'Demo data seeded successfully',
+      credentials: {
+        caregiver: { email: caregiverEmail, password },
+        elders: demoData.map(d => ({ ...d, password }))
+      }
     };
   }
 }

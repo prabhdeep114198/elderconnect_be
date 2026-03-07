@@ -8,6 +8,7 @@ import { MedicationLog } from './entities/medication-log.entity';
 import { DailyHealthMetric } from './entities/daily-health-metric.entity';
 import { Appointment } from './entities/appointment.entity';
 import { SocialEvent } from './entities/social-event.entity';
+import { PublicController } from './public.controller';
 import { AuditLogService } from '../common/services/audit-log.service';
 import { AuditLog } from '../common/services/entities/audit-log.entity';
 import { EmergencyPredictionService } from './services/emergency-prediction.service';
@@ -34,7 +35,7 @@ import { CommonCacheModule } from '../common/services/cache.module';
     TypeOrmModule.forFeature([User], 'auth'),
     TypeOrmModule.forFeature([AuditLog], 'audit'),
   ],
-  controllers: [ProfileController],
+  controllers: [ProfileController, PublicController],
   providers: [ProfileService, AuditLogService, EmergencyPredictionService],
   exports: [ProfileService, EmergencyPredictionService],
 })

@@ -18,6 +18,9 @@ export class UserProfile {
   @Column({ type: 'uuid', unique: true })
   userId: string;
 
+  @Column({ type: 'uuid', nullable: true })
+  caregiverId: string;
+
   @Column({ type: 'date', nullable: true })
   dateOfBirth: Date;
 
