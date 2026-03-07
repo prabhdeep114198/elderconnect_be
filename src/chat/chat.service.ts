@@ -54,6 +54,13 @@ RULES:
 - Use simple, reassuring language
 - Never be alarming
 
+PROACTIVE COACHING:
+- Adaptive Reminders (FR1): If the user mentions missing medication, suggest rescheduling based on their recent activity patterns (e.g., "Since you just woke up from a nap, let's take your medication now").
+- Sustainability Coaching (FR4): Weave in eco-friendly suggestions. If it's daytime, suggest solar charging their wearable device. Explain how taking certain digital or sustainable actions helps the environment.
+- Nutrition Coach (FR6): If they ask about food or meal plans, provide personalized suggestions based on their conditions (e.g., if they have diabetes, suggest low-glycemic meals). 
+- Hydration & Sleep Support (FR7): Frequently remind them to drink water, linking it to the local weather or time of day. Suggest sleep improvements if their sleep score is low.
+- Fall Prevention Coaching (FR8): Provide safe, daily functional balance and posture exercises if they mention feeling unsteady or if their physical score is low (e.g., "Seated Leg Extensions").
+
 USER CONTEXT:
 Physical score: ${scores.physical}
 Mental score: ${scores.mental}
@@ -77,7 +84,7 @@ Respond to the user message below.
                     'Authorization': `Bearer ${hfApiKey}`,
                 },
                 body: JSON.stringify({
-                    model: 'deepseek-ai/DeepSeek-V3-0324',
+                    model: 'mistralai/Mistral-7B-Instruct-v0.3',
                     messages: [
                         { role: 'system', content: systemPrompt },
                         { role: 'user', content: userMessage }
@@ -231,6 +238,158 @@ Respond to the user message below.
         };
     }
 
+    async getDynamicNutritionPlan(userId: string, dietType: string = 'vegetarian'): Promise<any> {
+        this.logger.log(`Generating dynamic ${dietType} nutrition plan for user ${userId}`);
+        const fullContext = await this.loadUserContext(userId);
+        const profile = await this.userProfileRepository.findOne({ where: { userId } });
+        const restrictions = profile?.allergies?.join(', ') || 'None';
+        const conditions = profile?.medicalConditions?.join(', ') || 'None';
 
+        const todayRaw = new Date();
+        const todayStr = todayRaw.toDateString();
+
+        const systemPrompt = `
+You are a specialized elderly nutrition assistant. Output ONLY a valid JSON array of meal objects based on the user's dietary parameters, nothing else. Do not use markdown wrappers like \`\`\`json.
+Today's Date: ${todayStr}
+User Conditions: ${conditions}
+User Restrictions/Allergies: ${restrictions}
+Dietary Preference: ${dietType}
+
+CRITICAL RULE FOR ${dietType.toUpperCase()} MODE:
+- If 'vegetarian', the meal plan MUST NOT contain any meat, chicken, fish, or seafood. Use eggs, dairy, beans, lentils, or tofu instead.
+- If 'non-vegetarian', you may include lean meats, fish, or poultry.
+
+Generate exactly 4 meals for ${todayStr}: Breakfast, Lunch, Snack, Dinner.
+Ensure variety and do not repeat the same meals if the user checks on different days.
+Each item in the array must be an object with:
+"meal" (string)
+"time" (string)
+"food" (string)
+"calories" (number)
+"icon" (string - use one of: "sunny-outline", "partly-sunny-outline", "nutrition-outline", "moon-outline", "fast-food-outline")
+`;
+
+        const hfApiKey = this.configService.get<string>('HUGGINGFACE_API_KEY') || process.env.HUGGINGFACE_API_KEY;
+        const fallbackMeals = dietType === 'vegetarian' ? [
+            {
+                meal: 'Breakfast', time: '08:00 AM', food: 'Oatmeal with Blueberries', calories: 280, icon: 'sunny-outline',
+            },
+            {
+                meal: 'Lunch', time: '01:00 PM', food: 'Quinoa and Roasted Veggie Salad', calories: 420, icon: 'partly-sunny-outline',
+            },
+            {
+                meal: 'Snack', time: '04:00 PM', food: 'Mixed Nuts and Fruit', calories: 180, icon: 'nutrition-outline',
+            },
+            {
+                meal: 'Dinner', time: '07:30 PM', food: 'Lentil Soup with Whole Grain Bread', calories: 450, icon: 'moon-outline',
+            },
+        ] : [
+            {
+                meal: 'Breakfast', time: '08:00 AM', food: 'Oatmeal with Almonds', calories: 300, icon: 'sunny-outline',
+            },
+            {
+                meal: 'Lunch', time: '01:00 PM', food: 'Grilled Chicken Salad', calories: 450, icon: 'partly-sunny-outline',
+            },
+            {
+                meal: 'Snack', time: '04:00 PM', food: 'Greek Yogurt', calories: 150, icon: 'nutrition-outline',
+            },
+            {
+                meal: 'Dinner', time: '07:30 PM', food: 'Baked Salmon with Broccoli', calories: 500, icon: 'moon-outline',
+            },
+        ];
+
+        try {
+            const response = await fetch('https://router.huggingface.co/v1/chat/completions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${hfApiKey}` },
+                body: JSON.stringify({
+                    model: 'mistralai/Mistral-7B-Instruct-v0.3',
+                    messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: "Generate meal plan." }],
+                    temperature: 0.2
+                }),
+            });
+
+            if (!response.ok) throw new Error('API request failed');
+
+            const responseData = await response.json();
+            let rawContent = responseData.choices?.[0]?.message?.content?.trim() || "[]";
+            if (rawContent.startsWith('```json')) rawContent = rawContent.replace(/```json/g, '').replace(/```/g, '').trim();
+            else if (rawContent.startsWith('```')) rawContent = rawContent.replace(/```/g, '').trim();
+
+            const meals = JSON.parse(rawContent);
+            return {
+                dietaryRestrictions: profile?.allergies?.length ? profile.allergies : ['General Healthy Diet'],
+                mealPlan: Array.isArray(meals) && meals.length > 0 ? meals : fallbackMeals
+            };
+        } catch (error) {
+            this.logger.error(`Error generating nutrition plan: ${error}`);
+            return { dietaryRestrictions: ['General Healthy Diet'], mealPlan: fallbackMeals };
+        }
+    }
+
+    async getDynamicExercises(userId: string): Promise<any> {
+        this.logger.log(`Generating dynamic exercises for user ${userId}`);
+        const fullContext = await this.loadUserContext(userId);
+        const profile = await this.userProfileRepository.findOne({ where: { userId } });
+        const mobility = profile?.healthGoals?.mobilityLevel || 'Independent';
+
+        const todayRaw = new Date();
+        const todayStr = todayRaw.toDateString();
+
+        const systemPrompt = `
+You are a physical therapy assistant for elderly fall prevention. Output ONLY a valid JSON array of exercise objects based on the user's mobility, nothing else. Do not use markdown wrappers like \`\`\`json.
+Today's Date: ${todayStr}
+User Mobility Level: ${mobility}
+
+Generate exactly 3 safe exercises for ${todayStr}.
+Ensure variety and suggest different exercises if the user checks on different days.
+Each item in the array must be an object with:
+"title" (string)
+"desc" (string)
+"duration" (string, e.g. "5 mins")
+"reps" (string, e.g. "10 reps")
+"icon" (string - use one of: "body-outline", "walk-outline", "accessibility-outline", "bicycle-outline", "fitness-outline")
+`;
+
+        const hfApiKey = this.configService.get<string>('HUGGINGFACE_API_KEY') || process.env.HUGGINGFACE_API_KEY;
+        const fallbackExercises = [
+            {
+                title: 'Seated Leg Extensions', desc: 'Improves quadriceps strength.', duration: '5 mins', reps: '10 reps', icon: 'body-outline'
+            },
+            {
+                title: 'Heel-to-Toe Walk', desc: 'Enhances balance.', duration: '5 mins', reps: '20 steps', icon: 'walk-outline'
+            },
+            {
+                title: 'Sit-to-Stand', desc: 'Builds core strength.', duration: '3 mins', reps: '10 reps', icon: 'accessibility-outline'
+            }
+        ];
+
+        try {
+            const response = await fetch('https://router.huggingface.co/v1/chat/completions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${hfApiKey}` },
+                body: JSON.stringify({
+                    model: 'mistralai/Mistral-7B-Instruct-v0.3',
+                    messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: "Generate exercises." }],
+                    temperature: 0.2
+                }),
+            });
+
+            if (!response.ok) throw new Error('API request failed');
+
+            const responseData = await response.json();
+            let rawContent = responseData.choices?.[0]?.message?.content?.trim() || "[]";
+            if (rawContent.startsWith('```json')) rawContent = rawContent.replace(/```json/g, '').replace(/```/g, '').trim();
+            else if (rawContent.startsWith('```')) rawContent = rawContent.replace(/```/g, '').trim();
+
+            const exercises = JSON.parse(rawContent);
+            return {
+                exercises: Array.isArray(exercises) && exercises.length > 0 ? exercises : fallbackExercises
+            };
+        } catch (error) {
+            this.logger.error(`Error generating exercises: ${error}`);
+            return { exercises: fallbackExercises };
+        }
+    }
 
 }

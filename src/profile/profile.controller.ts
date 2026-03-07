@@ -593,14 +593,26 @@ export class ProfileController {
   @Get('sustainability/impact')
   @ApiOperation({ summary: 'Get user sustainability impact' })
   async getSustainabilityImpact(@Param('userId') userId: string) {
+    // Generate dynamic mock data based on time of day
+    const currentHour = new Date().getHours();
+    const isPeakDaylight = currentHour >= 10 && currentHour <= 16;
+    const basePower = isPeakDaylight ? 0.3 : 0.6;
+    const powerDraw = (basePower + Math.random() * 0.2).toFixed(2);
+
+    // Simulate incremental data based on day of year
+    const dayOfYear = Math.floor((new Date().getTime() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 1000 / 60 / 60 / 24);
+
     return {
       message: 'Sustainability impact retrieved successfully',
       data: {
-        reportsGenerated: 12,
-        paperSavedSheets: 60,
-        carbonSavedKg: 15.5,
-        tripsAvoided: 8,
-        year: 2024
+        reportsGenerated: Math.max(5, Math.floor(dayOfYear / 10)),
+        paperSavedSheets: Math.max(20, Math.floor(dayOfYear / 2)),
+        carbonSavedKg: parseFloat((dayOfYear * 0.15).toFixed(1)) || 15.5,
+        tripsAvoided: Math.max(2, Math.floor(dayOfYear / 15)),
+        year: new Date().getFullYear(),
+        powerDraw: parseFloat(powerDraw),
+        solarActive: isPeakDaylight,
+        devicesRecycled: 1
       }
     };
   }
