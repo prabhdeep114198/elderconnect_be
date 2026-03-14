@@ -11,6 +11,7 @@ import {
   UseInterceptors,
   HttpCode,
   HttpStatus,
+  BadRequestException,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
@@ -241,6 +242,46 @@ export class NotificationController {
     return {
       message: 'Medication reminder scheduled successfully',
       data: { notifications, count: notifications.length },
+    };
+  }
+
+  @Post('health-reminder')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Schedule a comprehensive health reminder matching the n8n logic natively' })
+  @ApiResponse({ status: 200, description: 'Success Response' })
+  @ApiResponse({ status: 400, description: 'Error Response if mandatory fields miss' })
+  async createHealthReminder(
+    @Body() body: any,
+    @CurrentUser() currentUser,
+  ) {
+    if (!body.phone || !body.reminderTime) {
+      throw new BadRequestException({
+        status: 'error',
+        message: 'Missing required fields: phone and reminderTime are mandatory'
+      });
+    }
+
+    const userId = body.userId || (currentUser && currentUser.id);
+
+    // Provide a bypass if used as a true server-to-server webhook, otherwise validate JWT constraints
+    if (currentUser && userId !== currentUser.id && 
+        !currentUser.roles.includes(UserRole.CAREGIVER) && 
+        !currentUser.roles.includes(UserRole.ADMIN)) {
+      throw new BadRequestException('Unauthorized to schedule reminder for this user');
+    }
+
+    await this.notificationService.scheduleHealthReminder(userId || 'system-webhook', body);
+
+    return {
+      status: 'success',
+      message: 'Reminder scheduled successfully',
+      reminderDetails: {
+        patientName: body.patientName || 'Patient',
+        type: body.reminderType || 'medicine',
+        item: body.itemName || body.medicine || 'medication',
+        scheduledIn: isNaN(Number(body.reminderTime)) ? body.reminderTime : `${body.reminderTime} minutes`,
+        platform: body.platform || 'whatsapp'
+      }
     };
   }
 

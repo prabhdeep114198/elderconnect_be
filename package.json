@@ -85,7 +85,7 @@
     "serverless-http": "^4.0.0",
     "socket.io": "^4.7.5",
     "swagger-ui-express": "^5.0.1",
-    "twilio": "^5.10.4",
+    "twilio": "^5.13.0",
     "typeorm": "^0.3.27",
     "uuid": "^13.0.0"
   },

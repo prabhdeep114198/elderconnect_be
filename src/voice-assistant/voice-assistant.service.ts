@@ -522,15 +522,51 @@ export class VoiceAssistantService {
     }
 
     private async handleQueryInfo(parsed: ParsedIntent, userId: string, originalText: string): Promise<VoiceAssistantResponse> {
-        return {
-            success: true,
-            action: 'QUERY_INFO',
-            originalText,
-            correctedText: parsed.correctedText,
-            message: parsed.message || "I've noted your request.",
-            timestamp: new Date().toISOString(),
-            data: { queryType: parsed.data.queryType, details: parsed.data.details },
-        };
+        try {
+            const queryType = parsed.data.queryType?.toLowerCase() || '';
+            let message = parsed.message || "I've noted your request.";
+            const lowerText = originalText.toLowerCase();
+
+            if (queryType.includes('health') || lowerText.includes('health') || lowerText.includes('vitals') || lowerText.includes('pressure') || lowerText.includes('sugar') || lowerText.includes('heart')) {
+                const recentVitals = await this.vitalsRepository.find({
+                    where: { userId },
+                    order: { recordedAt: 'DESC' },
+                    take: 3
+                });
+
+                if (recentVitals.length > 0) {
+                    const vitalsSummary = recentVitals.map(v => {
+                        let val = v.reading?.value || '';
+                        if (v.vitalType === 'blood_pressure' && v.reading?.systolic && v.reading?.diastolic) {
+                             val = `${v.reading.systolic} over ${v.reading.diastolic}`;
+                        } else if (v.vitalType === 'heart_rate' && v.reading?.bpm) {
+                             val = `${v.reading.bpm} beats per minute`;
+                        } else if (v.reading?.celsius) {
+                             val = `${v.reading.celsius} degrees`;
+                        }
+                        return `${v.vitalType.replace('_', ' ')} is ${val}`;
+                    }).join(', and your ');
+                    message = `Based on your recent records, your ${vitalsSummary}.`;
+                } else {
+                    message = "I couldn't find any recent health readings for you. Would you like to log something now?";
+                }
+            } else if (queryType.includes('weather') || lowerText.includes('weather')) {
+                message = "The weather data is not fully integrated yet, but please make sure to dress comfortably if you go out today!";
+            }
+
+            return {
+                success: true,
+                action: 'QUERY_INFO',
+                originalText,
+                correctedText: parsed.correctedText,
+                message,
+                timestamp: new Date().toISOString(),
+                data: { queryType: parsed.data.queryType, details: parsed.data.details },
+            };
+        } catch (err) {
+            this.logger.error(`[VoiceAssistant] QUERY_INFO failed: ${err.message}`);
+            return this.buildErrorResponse(originalText, 'Sorry, I could not process your query right now.', userId);
+        }
     }
 
     private async getUserProfile(userId: string): Promise<UserProfile> {

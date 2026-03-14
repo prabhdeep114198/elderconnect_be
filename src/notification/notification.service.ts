@@ -221,14 +221,17 @@ export class NotificationService implements OnModuleInit {
     console.log(`MESSAGE: ${notification.message}`);
     console.log('-'.repeat(40) + '\n');
 
-    // N8N Integration Placeholder
-    // return this.httpService.post(process.env.N8N_WEBHOOK_URL, {
-    //   type: 'SMS',
-    //   recipient: notification.recipient,
-    //   message: notification.message
-    // }).toPromise();
-
-    return { success: true, message: 'Simulated N8N/Twilio handoff successful' };
+    // Twilio Integration
+    try {
+      const smsResult = await this.twilioService.sendSMS(notification.recipient, notification.message, notification.priority);
+      return { 
+          success: smsResult.success, 
+          messageId: smsResult.messageId || `sms_${Date.now()}`,
+          error: smsResult.error 
+      };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
   }
 
   private async sendPushNotification(notification: Notification): Promise<any> {
@@ -267,7 +270,17 @@ export class NotificationService implements OnModuleInit {
     console.log(`TEXT-TO-SPEECH: ${notification.message}`);
     console.log('-'.repeat(40) + '\n');
 
-    return { success: true, message: 'Simulated N8N/Twilio handoff successful' };
+    // Twilio Voice Call Integration
+    try {
+      const voiceResult = await this.twilioService.makeVoiceCall(notification.recipient, notification.message, notification.priority);
+      return { 
+          success: voiceResult.success, 
+          callId: voiceResult.callId || `voice_${Date.now()}`,
+          error: voiceResult.error
+      };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
   }
 
   private async sendEmailNotification(notification: Notification): Promise<any> {
@@ -455,6 +468,64 @@ export class NotificationService implements OnModuleInit {
     }
 
     return notifications;
+  }
+
+  // Health Reminders (N8N Workflow implementation natively)
+  async scheduleHealthReminder(
+    userId: string,
+    data: {
+      patientName?: string;
+      reminderType?: string;
+      itemName?: string;
+      medicine?: string;
+      dosage?: string;
+      reminderTime: string | Date | number;
+      phone: string;
+      platform?: string;
+      instructions?: string;
+      caregiverName?: string;
+    }
+  ): Promise<Notification> {
+    const patientName = data.patientName || 'Patient';
+    const reminderType = data.reminderType || 'medicine';
+    const itemName = data.itemName || data.medicine || 'medication';
+    const dosage = data.dosage || '';
+    const phone = data.phone;
+    const platform = data.platform || 'whatsapp';
+    const instructions = data.instructions || '';
+    const caregiverName = data.caregiverName || 'Family Member';
+    
+    let message = '';
+    
+    if (reminderType === 'medicine') {
+      message = `🏥 *Medicine Reminder*\n\nHello ${caregiverName},\n\n⏰ Time for ${patientName} to take:\n💊 *${itemName}*${dosage ? ` (${dosage})` : ''}\n\n${instructions ? `📋 Instructions: ${instructions}\n\n` : ''}✅ Please confirm once administered.`;
+    } else if (reminderType === 'vitals') {
+      message = `🩺 *Vitals Check Reminder*\n\nHello ${caregiverName},\n\n⏰ Time to check ${patientName}'s:\n📊 *${itemName}*\n\n${instructions ? `📋 Instructions: ${instructions}\n\n` : ''}✅ Please record the measurements.`;
+    } else {
+      message = `🔔 *Health Reminder*\n\nHello ${caregiverName},\n\n⏰ Reminder for ${patientName}:\n📌 ${itemName}\n\n${instructions ? `📋 ${instructions}\n\n` : ''}✅ Please complete this task.`;
+    }
+
+    let scheduledTime: Date;
+    if (typeof data.reminderTime === 'number' || (typeof data.reminderTime === 'string' && !isNaN(Number(data.reminderTime)))) {
+      scheduledTime = new Date(Date.now() + Number(data.reminderTime) * 60000);
+    } else {
+      scheduledTime = new Date(data.reminderTime);
+    }
+
+    const notification = await this.createNotification({
+      userId,
+      // For whatsapp/telegram mock, fallback to SMS internally if it's Twilio, else IN_APP logic
+      type: platform.toLowerCase() === 'twilio' ? NotificationType.SMS : NotificationType.IN_APP,
+      category: reminderType === 'medicine' ? NotificationCategory.MEDICATION_REMINDER : NotificationCategory.SYSTEM_NOTIFICATION,
+      title: 'Health Reminder',
+      message,
+      recipient: phone,
+      priority: AlertPriority.HIGH,
+      scheduledAt: scheduledTime,
+      data: { patientName, itemName, reminderType, platform },
+    });
+
+    return notification;
   }
 
   // Background Jobs
