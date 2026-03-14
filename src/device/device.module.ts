@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DeviceController } from './device.controller';
+import { PublicDeviceController } from './public-device.controller';
 import { DeviceService } from './device.service';
 import { TelemetryData } from './entities/telemetry.entity';
 import { Vitals } from './entities/vitals.entity';
@@ -14,7 +15,7 @@ import { AuditLog } from '../common/services/entities/audit-log.entity';
     TypeOrmModule.forFeature([TelemetryData, Vitals, SOSAlert], 'vitals'),
     TypeOrmModule.forFeature([AuditLog], 'audit'),
   ],
-  controllers: [DeviceController],
+  controllers: [DeviceController, PublicDeviceController],
   providers: [DeviceService, KafkaService, AuditLogService],
   exports: [DeviceService, KafkaService],
 })
