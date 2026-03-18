@@ -106,13 +106,19 @@ import { NostalgiaMemory } from './nostalgia/entities/nostalgia-memory.entity';
     CacheModule.registerAsync({
       isGlobal: true,
       imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
-        store: require('cache-manager-ioredis-yet'),
-        host: configService.get('REDIS_HOST'),
-        port: configService.get('REDIS_PORT'),
-        password: configService.get('REDIS_PASSWORD') || undefined,
-        ttl: 300, // Default TTL: 5 minutes
-      }),
+      useFactory: async (configService: ConfigService) => {
+        const host = configService.get('REDIS_HOST');
+        if (process.env.NODE_ENV === 'production' && (!host || host === 'localhost')) {
+           return { ttl: 300 }; // Bypass Redis entirely on Azure if no real host provided
+        }
+        return {
+          store: require('cache-manager-ioredis-yet'),
+          host,
+          port: configService.get('REDIS_PORT'),
+          password: configService.get('REDIS_PASSWORD') || undefined,
+          ttl: 300, // Default TTL: 5 minutes
+        };
+      },
       inject: [ConfigService],
     }),
 

@@ -8,7 +8,7 @@ export const databaseConfig = registerAs('database', () => ({
     port: 5432,
     username: process.env.DB_USERNAME || 'postgres',
     password: process.env.DB_PASSWORD || 'postgres',
-    database: process.env.AUTH_DB_NAME || 'elder_auth_db',
+    database: process.env.DB_NAME || 'elder_notification_db', // Forced single NeonDB
     entities: [__dirname + '/../auth/entities/*.entity{.ts,.js}'],
     synchronize: process.env.NODE_ENV !== 'production',
     logging: process.env.NODE_ENV === 'development',
@@ -21,7 +21,7 @@ export const databaseConfig = registerAs('database', () => ({
     port: 5432,
     username: process.env.DB_USERNAME || 'postgres',
     password: process.env.DB_PASSWORD || 'postgres',
-    database: process.env.PROFILE_DB_NAME || 'elder_profile_db',
+    database: process.env.DB_NAME || 'elder_notification_db', // Forced single NeonDB
     entities: [__dirname + '/../profile/entities/*.entity{.ts,.js}'],
     synchronize: process.env.NODE_ENV !== 'production',
     logging: process.env.NODE_ENV === 'development',
@@ -34,7 +34,7 @@ export const databaseConfig = registerAs('database', () => ({
     port: 5432,
     username: process.env.DB_USERNAME || 'postgres',
     password: process.env.DB_PASSWORD || 'postgres',
-    database: process.env.VITALS_DB_NAME || 'elder_vitals_db',
+    database: process.env.DB_NAME || 'elder_notification_db', // Forced single NeonDB
     entities: [__dirname + '/../device/entities/*.entity{.ts,.js}'],
     synchronize: process.env.NODE_ENV !== 'production',
     logging: process.env.NODE_ENV === 'development',
@@ -47,7 +47,7 @@ export const databaseConfig = registerAs('database', () => ({
     port: 5432,
     username: process.env.DB_USERNAME || 'postgres',
     password: process.env.DB_PASSWORD || 'postgres',
-    database: process.env.MEDIA_DB_NAME || 'elder_media_db',
+    database: process.env.DB_NAME || 'elder_notification_db', // Forced single NeonDB
     entities: [__dirname + '/../media/entities/*.entity{.ts,.js}'],
     synchronize: process.env.NODE_ENV !== 'production',
     logging: process.env.NODE_ENV === 'development',
@@ -60,7 +60,7 @@ export const databaseConfig = registerAs('database', () => ({
     port: 5432,
     username: process.env.DB_USERNAME || 'postgres',
     password: process.env.DB_PASSWORD || 'postgres',
-    database: process.env.AUDIT_DB_NAME || 'elder_audit_db',
+    database: process.env.DB_NAME || 'elder_notification_db', // Forced single NeonDB
     entities: [__dirname + '/../common/entities/*.entity{.ts,.js}'],
     synchronize: process.env.NODE_ENV !== 'production',
     logging: process.env.NODE_ENV === 'development',
