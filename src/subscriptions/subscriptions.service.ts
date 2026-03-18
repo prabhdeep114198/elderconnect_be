@@ -6,6 +6,7 @@ import Razorpay from 'razorpay';
 import * as crypto from 'crypto';
 import { Flagsmith } from 'flagsmith-nodejs';
 import { Subscription, SubscriptionStatus } from './entities/subscription.entity';
+import { SubscriptionTier } from '../common/enums/subscription-tier.enum';
 import { User } from '../auth/entities/user.entity';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { VerifyPaymentDto } from './dto/verify-payment.dto';
@@ -43,12 +44,23 @@ export class SubscriptionsService {
     }
 
     async createOrder(userId: string, createOrderDto: CreateOrderDto) {
-        const { amount, currency } = createOrderDto;
+        const { tier } = createOrderDto;
+
+        const tierPricing = {
+            [SubscriptionTier.CORE]: 0,
+            [SubscriptionTier.PREMIUM]: 249,
+            [SubscriptionTier.ENTERPRISE]: 499,
+        };
+        const amount = tierPricing[tier];
+
+        if (amount === 0) {
+            throw new BadRequestException('Core tier does not require payment calculation via Razorpay');
+        }
 
         try {
             const options = {
                 amount: Math.round(amount * 100), // Razorpay works in paise
-                currency: currency,
+                currency: 'INR',
                 receipt: `receipt_${Date.now()}`,
             };
 
@@ -58,7 +70,8 @@ export class SubscriptionsService {
                 userId,
                 razorpayOrderId: order.id,
                 amount,
-                currency,
+                currency: 'INR',
+                planTier: tier,
                 status: SubscriptionStatus.PENDING,
             });
 
@@ -71,11 +84,11 @@ export class SubscriptionsService {
         }
     }
 
-    async getCheckoutHtml(userId: string, amount: number) {
+    async getCheckoutHtml(userId: string, tier: SubscriptionTier | any) {
         const user = await this.userRepository.findOne({ where: { id: userId } });
         if (!user) throw new BadRequestException('User not found');
 
-        const order = await this.createOrder(userId, { amount, currency: 'INR' });
+        const order = await this.createOrder(userId, { tier });
         const keyId = this.configService.get<string>('RAZORPAY_KEY_ID');
 
         // This HTML form will auto-submit or show the Razorpay checkout
@@ -273,6 +286,7 @@ export class SubscriptionsService {
         const user = await this.userRepository.findOne({ where: { id: userId } });
         if (user) {
             user.isSubscribed = true;
+            user.subscriptionTier = subscription.planTier;
             user.subscriptionExpiresAt = subscription.endDate;
             await this.userRepository.save(user);
 
@@ -314,6 +328,7 @@ export class SubscriptionsService {
 
         return {
             isSubscribed: user.isSubscribed,
+            tier: user.subscriptionTier,
             expiresAt: user.subscriptionExpiresAt,
         };
     }

@@ -8,6 +8,7 @@ import {
     JoinColumn,
 } from 'typeorm';
 import { User } from '../../auth/entities/user.entity';
+import { SubscriptionTier } from '../../common/enums/subscription-tier.enum';
 
 export enum SubscriptionStatus {
     PENDING = 'pending',
@@ -37,6 +38,13 @@ export class Subscription {
 
     @Column({ type: 'varchar', nullable: true })
     razorpaySignature?: string;
+
+    @Column({
+        type: 'enum',
+        enum: SubscriptionTier,
+        default: SubscriptionTier.CORE,
+    })
+    planTier!: SubscriptionTier;
 
     @Column({
         type: 'enum',

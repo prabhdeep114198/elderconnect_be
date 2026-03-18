@@ -140,6 +140,52 @@ export class EmailService {
         });
     }
 
+    async sendVerificationEmail(email: string, verifyToken: string): Promise<boolean> {
+        const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:8081';
+        const verifyUrl = `${frontendUrl}/verify-email?token=${verifyToken}`;
+
+        const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background-color: #4A90E2; color: white; padding: 20px; text-align: center; }
+          .content { padding: 20px; background-color: #f9f9f9; }
+          .button { display: inline-block; padding: 12px 24px; background-color: #4cd964; color: white; text-decoration: none; border-radius: 4px; margin: 20px 0; font-weight: bold; }
+          .footer { padding: 20px; text-align: center; font-size: 12px; color: #666; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>Verify your Email Address</h1>
+          </div>
+          <div class="content">
+            <p>Welcome to ElderConnect!</p>
+            <p>Please confirm your email address so we know it's you.</p>
+            <center>
+              <a href="${verifyUrl}" class="button">Verify Email</a>
+            </center>
+            <p>Or copy and paste this link into your browser:</p>
+            <p style="word-break: break-all;">${verifyUrl}</p>
+          </div>
+          <div class="footer">
+            <p>&copy; ${new Date().getFullYear()} ElderConnect. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+        return this.sendEmail({
+            to: email,
+            subject: 'ElderConnect - Verify Your Email',
+            html,
+        });
+    }
+
     async sendWelcomeEmail(email: string, firstName: string): Promise<boolean> {
         const html = `
       <!DOCTYPE html>

@@ -221,6 +221,19 @@ export class AuthController {
     };
   }
 
+  @Post('verify-email')
+  @UseGuards(ThrottlerGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify email with token' })
+  @ApiResponse({ status: 200, description: 'Email verified successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid token' })
+  async verifyEmail(@Body() body: { token: string }) {
+    await this.authService.verifyEmail(body.token);
+    return {
+      message: 'Email verified successfully',
+    };
+  }
+
   @Post('logout')
   @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth()

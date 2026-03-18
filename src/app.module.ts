@@ -42,6 +42,7 @@ import { GraphModule } from './graph/graph.module';
 import { CommonCacheModule } from './common/services/cache.module';
 import { PersonalizationModule } from './personalization/personalization.module';
 import { VoiceAssistantModule } from './voice-assistant/voice-assistant.module';
+import { NostalgiaModule } from './nostalgia/nostalgia.module';
 
 // Common interceptors
 import { AuditLogInterceptor } from './common/interceptors/audit-log.interceptor';
@@ -67,6 +68,7 @@ import { NotificationTemplate } from './notification/entities/notification-templ
 import { AuditLog } from './common/services/entities/audit-log.entity';
 import { Subscription } from './subscriptions/entities/subscription.entity';
 import { UserInteraction } from './personalization/entities/user-interaction.entity';
+import { NostalgiaMemory } from './nostalgia/entities/nostalgia-memory.entity';
 
 @Module({
   imports: [
@@ -126,7 +128,7 @@ import { UserInteraction } from './personalization/entities/user-interaction.ent
         username: configService.get('database.auth.username'),
         password: configService.get('database.auth.password'),
         database: configService.get('database.auth.database'),
-        entities: [User, Device, Subscription],
+        entities: [User, Device, Subscription, NostalgiaMemory],
         synchronize: true, // Enabled to auto-create missing columns like 'avatar'
         logging: configService.get('app.environment') === 'development',
         // Use the database config's SSL setting so env flags like requiring SSL are honored
@@ -244,6 +246,7 @@ import { UserInteraction } from './personalization/entities/user-interaction.ent
     CommonCacheModule,
     PersonalizationModule,
     VoiceAssistantModule,
+    NostalgiaModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

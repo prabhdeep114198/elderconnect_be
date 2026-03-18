@@ -12,6 +12,9 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { TierGuard } from '../common/guards/tier.guard';
+import { RequireTier } from '../common/decorators/require-tier.decorator';
+import { SubscriptionTier } from '../common/enums/subscription-tier.enum';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { DeviceService } from './device.service';
 import { CreateTelemetryDto, BulkTelemetryDto, CreateVitalsDto, CreateSOSDto, UpdateSOSDto } from './dto/telemetry.dto';
@@ -214,6 +217,8 @@ export class DeviceController {
   @ApiOperation({ summary: 'Get vital signs trends and analytics' })
   @ApiQuery({ name: 'days', required: false, type: Number })
   @ApiResponse({ status: 200, description: 'Vitals trends retrieved successfully' })
+  @UseGuards(TierGuard)
+  @RequireTier(SubscriptionTier.PREMIUM, SubscriptionTier.ENTERPRISE)
   async getVitalsTrends(
     @Param('userId') userId: string,
     @Param('vitalType') vitalType: string,
@@ -378,6 +383,8 @@ export class DeviceController {
   @Get('devices/:deviceId/health')
   @ApiOperation({ summary: 'Get device health summary' })
   @ApiResponse({ status: 200, description: 'Device health summary retrieved successfully' })
+  @UseGuards(TierGuard)
+  @RequireTier(SubscriptionTier.PREMIUM, SubscriptionTier.ENTERPRISE)
   async getDeviceHealthSummary(
     @Param('deviceId') deviceId: string,
     @CurrentUser() currentUser,

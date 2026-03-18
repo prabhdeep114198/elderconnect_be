@@ -1,14 +1,10 @@
-import { IsNumber, IsString, IsNotEmpty } from 'class-validator';
+import { IsNotEmpty, IsEnum } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { SubscriptionTier } from '../../common/enums/subscription-tier.enum';
 
 export class CreateOrderDto {
-    @ApiProperty({ example: 999, description: 'Amount in INR' })
-    @IsNumber()
+    @ApiProperty({ example: 'PREMIUM', description: 'Subscription tier' })
+    @IsEnum(SubscriptionTier)
     @IsNotEmpty()
-    amount: number;
-
-    @ApiProperty({ example: 'INR', description: 'Currency code' })
-    @IsString()
-    @IsNotEmpty()
-    currency: string;
+    tier: SubscriptionTier;
 }

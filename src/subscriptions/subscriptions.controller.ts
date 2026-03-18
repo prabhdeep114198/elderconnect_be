@@ -25,8 +25,8 @@ export class SubscriptionsController {
     @Get('checkout-html')
     @Header('Content-Type', 'text/html')
     @ApiOperation({ summary: 'Get Razorpay checkout HTML form' })
-    async getCheckoutHtml(@CurrentUser() user, @Query('amount') amount: number) {
-        return this.subscriptionsService.getCheckoutHtml(user.id, amount);
+    async getCheckoutHtml(@CurrentUser() user, @Query('tier') tier: string) {
+        return this.subscriptionsService.getCheckoutHtml(user.id, tier as any);
     }
 
     @ApiBearerAuth()

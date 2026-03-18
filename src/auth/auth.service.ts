@@ -55,10 +55,12 @@ export class AuthService {
 
     const savedUser = await this.userRepository.save(user);
 
-    // Send welcome email (non-blocking)
-    this.emailService.sendWelcomeEmail(savedUser.email, savedUser.firstName).catch((err) => {
-      console.error('Failed to send welcome email:', err);
-    });
+    // Send verification email (non-blocking)
+    if (savedUser.emailVerificationToken) {
+      this.emailService.sendVerificationEmail(savedUser.email, savedUser.emailVerificationToken).catch((err) => {
+        console.error('Failed to send verification email:', err);
+      });
+    }
 
     // Generate JWT token
     const token = this.generateToken(savedUser);
@@ -365,6 +367,23 @@ export class AuthService {
 
     // Revoke all refresh tokens (force re-login on all devices)
     await this.tokenBlacklistService.revokeAllUserTokens(user.id);
+  }
+
+  async verifyEmail(token: string): Promise<void> {
+    const user = await this.userRepository.findOne({
+      where: { emailVerificationToken: token },
+    });
+
+    if (!user) {
+      throw new BadRequestException('Invalid verification token');
+    }
+
+    user.isEmailVerified = true;
+    user.emailVerificationToken = null; // Consume the token
+    await this.userRepository.save(user);
+
+    // Invalidate user cache so next time they fetch profile it says verified
+    await this.cacheService.invalidateUserCache(user.id);
   }
 
   /**

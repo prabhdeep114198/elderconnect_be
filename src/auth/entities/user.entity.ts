@@ -11,6 +11,7 @@ import {
 import { Exclude } from 'class-transformer';
 import * as bcrypt from 'bcryptjs';
 import { UserRole } from '../../common/enums/user-role.enum';
+import { SubscriptionTier } from '../../common/enums/subscription-tier.enum';
 
 @Entity('users')
 @Index(['email'], { unique: true })
@@ -54,11 +55,11 @@ export class User {
 
   @Column({ type: 'varchar', length: 255, nullable: true })
   @Exclude()
-  emailVerificationToken: string;
+  emailVerificationToken: string | null;
 
   @Column({ type: 'varchar', length: 10, nullable: true })
   @Exclude()
-  phoneVerificationCode: string;
+  phoneVerificationCode: string | null;
 
   @Column({ type: 'varchar', length: 255, nullable: true })
   @Exclude()
@@ -93,6 +94,13 @@ export class User {
 
   @Column({ type: 'boolean', default: false })
   isSubscribed: boolean;
+
+  @Column({
+    type: 'enum',
+    enum: SubscriptionTier,
+    default: SubscriptionTier.CORE,
+  })
+  subscriptionTier: SubscriptionTier;
 
   @Column({ type: 'timestamp', nullable: true })
   subscriptionExpiresAt: Date;
