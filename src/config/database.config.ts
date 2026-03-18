@@ -23,7 +23,7 @@ export const databaseConfig = registerAs('database', () => ({
     password: process.env.DB_PASSWORD || 'postgres',
     database: process.env.DB_NAME || 'elder_notification_db', // Forced single NeonDB
     entities: [__dirname + '/../profile/entities/*.entity{.ts,.js}'],
-    synchronize: process.env.NODE_ENV !== 'production',
+    synchronize: false, // Prevent DB Locking
     logging: process.env.NODE_ENV === 'development',
     ssl: process.env.DB_SSL === 'true' || process.env.DB_HOST?.includes('neon.tech') || process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
   } as TypeOrmModuleOptions,
@@ -36,7 +36,7 @@ export const databaseConfig = registerAs('database', () => ({
     password: process.env.DB_PASSWORD || 'postgres',
     database: process.env.DB_NAME || 'elder_notification_db', // Forced single NeonDB
     entities: [__dirname + '/../device/entities/*.entity{.ts,.js}'],
-    synchronize: process.env.NODE_ENV !== 'production',
+    synchronize: false, // Prevent DB Locking
     logging: process.env.NODE_ENV === 'development',
     ssl: process.env.DB_SSL === 'true' || process.env.DB_HOST?.includes('neon.tech') || process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
   } as TypeOrmModuleOptions,
@@ -49,7 +49,7 @@ export const databaseConfig = registerAs('database', () => ({
     password: process.env.DB_PASSWORD || 'postgres',
     database: process.env.DB_NAME || 'elder_notification_db', // Forced single NeonDB
     entities: [__dirname + '/../media/entities/*.entity{.ts,.js}'],
-    synchronize: process.env.NODE_ENV !== 'production',
+    synchronize: false, // Prevent DB Locking
     logging: process.env.NODE_ENV === 'development',
     ssl: process.env.DB_SSL === 'true' || process.env.DB_HOST?.includes('neon.tech') || process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
   } as TypeOrmModuleOptions,
@@ -62,7 +62,7 @@ export const databaseConfig = registerAs('database', () => ({
     password: process.env.DB_PASSWORD || 'postgres',
     database: process.env.DB_NAME || 'elder_notification_db', // Forced single NeonDB
     entities: [__dirname + '/../common/entities/*.entity{.ts,.js}'],
-    synchronize: process.env.NODE_ENV !== 'production',
+    synchronize: false, // Prevent DB Locking
     logging: process.env.NODE_ENV === 'development',
     ssl: process.env.DB_SSL === 'true' || process.env.DB_HOST?.includes('neon.tech') || process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
   } as TypeOrmModuleOptions,

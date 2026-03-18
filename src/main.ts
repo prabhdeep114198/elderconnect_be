@@ -105,9 +105,8 @@ async function bootstrap() {
   // Initialize the application
   await app.init();
 
-  // If not running on Vercel, start the server
   if (!process.env.VERCEL) {
-    await app.listen(port);
+    await app.listen(port, '0.0.0.0');
     const logger = new Logger('Bootstrap');
     logger.log(`Application is running on: http://localhost:${port}/api`);
   }
