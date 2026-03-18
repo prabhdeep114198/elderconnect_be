@@ -99,6 +99,12 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
 
   async onModuleInit() {
     try {
+      const brokers = this.configService.get<string>('KAFKA_BROKERS') || 'localhost:9092';
+      if (process.env.NODE_ENV === 'production' && brokers.includes('localhost')) {
+          this.logger.warn('Bypassing Kafka initialization on Azure because brokers point to localhost. This prevents the 230s Container Timeout.');
+          this.isConnected = false;
+          return;
+      }
       this.logger.log('Connecting to Kafka...');
       await this.producer.connect();
       await this.consumer.connect();
