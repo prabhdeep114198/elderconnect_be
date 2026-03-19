@@ -20,14 +20,14 @@ export const validationSchema = Joi.object({
     AUDIT_DB_NAME: Joi.string().required(),
 
     // Redis
-    REDIS_HOST: Joi.string().required(),
+    REDIS_HOST: Joi.string().optional(),
     REDIS_PORT: Joi.number().default(6379),
     REDIS_PASSWORD: Joi.string().allow('').optional(),
 
     // Kafka
-    KAFKA_BROKERS: Joi.string().required(),
-    KAFKA_CLIENT_ID: Joi.string().required(),
-    KAFKA_GROUP_ID: Joi.string().required(),
+    KAFKA_BROKERS: Joi.string().optional(),
+    KAFKA_CLIENT_ID: Joi.string().optional(),
+    KAFKA_GROUP_ID: Joi.string().optional(),
 
     // JWT - CRITICAL: Must be provided
     JWT_SECRET: Joi.string()
