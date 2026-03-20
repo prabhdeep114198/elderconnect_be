@@ -84,7 +84,7 @@ Respond to the user message below.
                     'Authorization': `Bearer ${hfApiKey}`,
                 },
                 body: JSON.stringify({
-                    model: 'mistralai/Mistral-7B-Instruct-v0.3',
+                    model: 'meta-llama/Meta-Llama-3-8B-Instruct',
                     messages: [
                         { role: 'system', content: systemPrompt },
                         { role: 'user', content: userMessage }
@@ -303,7 +303,7 @@ Each item in the array must be an object with:
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${hfApiKey}` },
                 body: JSON.stringify({
-                    model: 'mistralai/Mistral-7B-Instruct-v0.3',
+                    model: 'meta-llama/Meta-Llama-3-8B-Instruct',
                     messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: "Generate meal plan." }],
                     temperature: 0.2
                 }),
@@ -369,7 +369,7 @@ Each item in the array must be an object with:
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${hfApiKey}` },
                 body: JSON.stringify({
-                    model: 'mistralai/Mistral-7B-Instruct-v0.3',
+                    model: 'meta-llama/Meta-Llama-3-8B-Instruct',
                     messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: "Generate exercises." }],
                     temperature: 0.2
                 }),
