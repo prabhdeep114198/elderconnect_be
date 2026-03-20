@@ -23,6 +23,7 @@ export class DeviceService {
     @InjectRepository(SOSAlert, 'vitals')
     private readonly sosAlertRepository: Repository<SOSAlert>,
     private readonly kafkaService: KafkaService,
+    private readonly deviceGateway: import('./device.gateway').DeviceGateway,
   ) { }
 
   // Telemetry Management
@@ -322,6 +323,16 @@ export class DeviceService {
     });
 
     const savedAlert = await this.sosAlertRepository.save(alert);
+
+    // Broadcast to user's phone right away via WebSockets (if online)
+    // so they can see the Red Screen and click Cancel!
+    this.deviceGateway.emitHardwareSOS(userId, {
+      alertId: savedAlert.id,
+      type: savedAlert.type,
+      description: savedAlert.description,
+      priority: savedAlert.priority,
+      timestamp: savedAlert.createdAt
+    });
 
     // If it's a fall detection or automated anomaly, give the user 30 seconds to cancel the false alarm
     // before broadcasting to emergency contacts! (Manual panic button is instant).
