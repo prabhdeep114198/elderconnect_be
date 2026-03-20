@@ -12,6 +12,7 @@ import { SOSAlert, SOSStatus, SOSType } from './entities/sos-alert.entity';
 import { CreateTelemetryDto, BulkTelemetryDto, CreateVitalsDto, CreateSOSDto, UpdateSOSDto } from './dto/telemetry.dto';
 import { KafkaService } from './services/kafka.service';
 import { AlertPriority } from '../common/enums/user-role.enum';
+import { DeviceGateway } from './device.gateway';
 
 @Injectable()
 export class DeviceService {
@@ -23,7 +24,7 @@ export class DeviceService {
     @InjectRepository(SOSAlert, 'vitals')
     private readonly sosAlertRepository: Repository<SOSAlert>,
     private readonly kafkaService: KafkaService,
-    private readonly deviceGateway: import('./device.gateway').DeviceGateway,
+    private readonly deviceGateway: DeviceGateway,
   ) { }
 
   // Telemetry Management

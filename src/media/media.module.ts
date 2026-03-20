@@ -19,7 +19,7 @@ import { AuditLog } from '../common/services/entities/audit-log.entity';
     }),
   ],
   controllers: [MediaController],
-  providers: [MediaService, S3Service, AuditLogService],
-  exports: [MediaService /* , S3Service */],
+  providers: [MediaService, AuditLogService],
+  exports: [MediaService],
 })
 export class MediaModule { }
