@@ -323,22 +323,36 @@ export class DeviceService {
 
     const savedAlert = await this.sosAlertRepository.save(alert);
 
-    // Publish to Kafka for immediate processing
-    await this.kafkaService.publishAlert({
-      alertId: savedAlert.id,
-      userId,
-      deviceId: savedAlert.deviceId,
-      type: savedAlert.type,
-      priority: savedAlert.priority,
-      description: savedAlert.description,
-      location: savedAlert.latitude && savedAlert.longitude ? {
-        latitude: savedAlert.latitude,
-        longitude: savedAlert.longitude,
-        address: savedAlert.address,
-      } : undefined,
-      contextData: savedAlert.contextData,
-      timestamp: savedAlert.createdAt,
-    });
+    // If it's a fall detection or automated anomaly, give the user 30 seconds to cancel the false alarm
+    // before broadcasting to emergency contacts! (Manual panic button is instant).
+    const isAutomated = ['fall_detection', 'inactivity', 'heart_rate_anomaly'].includes(savedAlert.type);
+    const delayMs = isAutomated ? 30000 : 0; // 30s for automated, 0s for manual
+
+    setTimeout(async () => {
+      // Re-fetch alert to ensure it hasn't been cancelled by the user in the 30-second window
+      const currentAlert = await this.sosAlertRepository.findOne({ where: { id: savedAlert.id } });
+      
+      if (currentAlert && currentAlert.status === SOSStatus.ACTIVE) {
+        console.log(`[SOS ENGINE] Broadcasting Alert ${savedAlert.id} after ${delayMs/1000}s safety window...`);
+        await this.kafkaService.publishAlert({
+          alertId: currentAlert.id,
+          userId: currentAlert.userId,
+          deviceId: currentAlert.deviceId,
+          type: currentAlert.type,
+          priority: currentAlert.priority,
+          description: currentAlert.description,
+          location: currentAlert.latitude && currentAlert.longitude ? {
+            latitude: currentAlert.latitude,
+            longitude: currentAlert.longitude,
+            address: currentAlert.address,
+          } : undefined,
+          contextData: currentAlert.contextData,
+          timestamp: currentAlert.createdAt,
+        });
+      } else {
+        console.log(`[SOS ENGINE] Alert ${savedAlert.id} was marked as ${currentAlert?.status}. Alert cancelled, no SMS sent.`);
+      }
+    }, delayMs);
 
     return savedAlert;
   }

@@ -1,6 +1,7 @@
 import {
   Controller,
   Post,
+  Put,
   Body,
   Param,
   UseGuards,
@@ -9,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiHeader } from '@nestjs/swagger';
 import { DeviceService } from './device.service';
-import { CreateSOSDto } from './dto/telemetry.dto';
+import { CreateSOSDto, UpdateSOSDto } from './dto/telemetry.dto';
 import { ApiKeyGuard } from '../common/guards/api-key.guard';
 
 @ApiTags('Public Device & Hardware Data (API Key Protected)')
@@ -40,6 +41,34 @@ export class PublicDeviceController {
 
     return {
       message: 'Hardware SOS alert created successfully via API Key',
+      data: { alert },
+    };
+  }
+
+  @Put(':deviceId/users/:userId/sos/:alertId')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Update/Cancel an SOS alert from a hardware device' })
+  @ApiHeader({
+    name: 'x-api-key',
+    description: 'Hardware API key for authorization',
+  })
+  @ApiResponse({ status: 200, description: 'SOS alert successfully updated' })
+  @ApiResponse({ status: 401, description: 'Invalid API Key' })
+  async updateHardwareSOSAlert(
+    @Param('deviceId') deviceId: string,
+    @Param('userId') userId: string,
+    @Param('alertId') alertId: string,
+    @Body() updateSOSDto: UpdateSOSDto,
+  ) {
+    const alert = await this.deviceService.updateSOSAlert(
+      userId,
+      alertId,
+      updateSOSDto,
+      `Hardware Device (${deviceId})`
+    );
+
+    return {
+      message: 'Hardware SOS alert updated successfully',
       data: { alert },
     };
   }
