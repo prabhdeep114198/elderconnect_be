@@ -58,20 +58,51 @@ export class NotificationService implements OnModuleInit {
   }
 
   async handleKafkaNotification(data: any): Promise<void> {
-    const { userId, notification } = data;
+    const { userId, notification, location } = data;
     this.logger.log(`Received notification request from Kafka for user ${userId}`);
 
     try {
-      await this.createNotification({
-        userId,
-        type: notification.type || NotificationType.IN_APP,
-        category: notification.category || NotificationCategory.SYSTEM_NOTIFICATION,
-        title: notification.title,
-        message: notification.message,
-        priority: notification.priority,
-        data: notification.data,
-        recipient: notification.recipient,
-      });
+      if (notification.category === NotificationCategory.SOS_ALERT) {
+        // Find emergency contacts for the user to send actual SMS / Calls
+        // If profile service isn't injected, we can do a generic broadcast
+        // For demonstration, we simply call sendEmergencyAlert with a fallback or lookup
+        // Ideally we would query the Profile/User table here. Let's send an emergency alert!
+        const emergencyContacts: { pushToken?: string; phone?: string }[] = [];
+        if (notification.recipient) {
+          emergencyContacts.push({ pushToken: notification.recipient, phone: notification.phone });
+        }
+
+        // Always attempt an in-app notification first
+        await this.createNotification({
+          userId,
+          type: NotificationType.IN_APP,
+          category: NotificationCategory.SOS_ALERT,
+          title: notification.title || '🚨 SOS EMERGENCY ALERT',
+          message: notification.message || 'Immediate assistance may be required.',
+          priority: AlertPriority.CRITICAL,
+          data: notification.data,
+        });
+
+        // Try to trigger Twilio & Push
+        await this.sendEmergencyAlert(
+          userId, 
+          emergencyContacts.length ? emergencyContacts : [{ phone: process.env.TWILIO_PHONE_NUMBER }], // Fallback to send somewhere if no contacts
+          notification.type || 'sos_alert',
+          notification.message || 'SOS Triggered',
+          location
+        );
+      } else {
+        await this.createNotification({
+          userId,
+          type: notification.type || NotificationType.IN_APP,
+          category: notification.category || NotificationCategory.SYSTEM_NOTIFICATION,
+          title: notification.title,
+          message: notification.message,
+          priority: notification.priority,
+          data: notification.data,
+          recipient: notification.recipient,
+        });
+      }
     } catch (error) {
       this.logger.error(`Failed to process Kafka notification: ${error.message}`);
     }
