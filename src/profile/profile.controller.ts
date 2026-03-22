@@ -422,9 +422,9 @@ export class ProfileController {
       data: {
         metrics: [
           { label: "Steps Today", value: metrics.steps.toLocaleString(), icon: "walk", trend: metrics.steps > 5000 ? "up" : "down" },
-          { label: "Heart Rate", value: `${metrics.heartRate || 72} bpm`, icon: "heart", trend: "stable" },
-          { label: "Sleep Quality", value: `${metrics.sleepHours || 0} hrs`, icon: "moon", trend: (metrics.sleepHours || 0) >= 7 ? "up" : "down" },
-          { label: "Hydration", value: `${metrics.waterIntake || 0}/8 cups`, icon: "water", trend: (metrics.waterIntake || 0) >= 6 ? "up" : "down" },
+          { label: "Heart Rate", value: `${metrics.heartRate ?? 0} bpm`, icon: "heart", trend: "stable" },
+          { label: "Sleep Quality", value: `${metrics.sleepHours ?? 0} hrs`, icon: "moon", trend: (metrics.sleepHours ?? 0) >= 7 ? "up" : "down" },
+          { label: "Hydration", value: `${metrics.waterIntake ?? 0}/8 cups`, icon: "water", trend: (metrics.waterIntake ?? 0) >= 6 ? "up" : "down" },
         ],
         raw: metrics // Send raw data too just in case
       }

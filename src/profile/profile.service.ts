@@ -984,7 +984,7 @@ export class ProfileService {
         avatar: user.avatar,
         metrics: {
           steps: dailyMetric?.steps || 0,
-          heartRate: dailyMetric?.heartRate || 72,
+          heartRate: dailyMetric?.heartRate ?? 0,
           sleepHours: dailyMetric?.sleepHours || 0,
         }
       });
