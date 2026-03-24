@@ -19,9 +19,9 @@ import { SocialEvent } from '../profile/entities/social-event.entity';
 // Vitals entity
 import { Vitals } from '../device/entities/vitals.entity';
 
-// ─── HuggingFace Config ───────────────────────────────────────────────────────
-const HF_API_URL = 'https://router.huggingface.co/v1/chat/completions';
-const HF_MODEL = 'deepseek-ai/DeepSeek-V3-0324';
+// ─── Grok Config ─────────────────────────────────────────────────────────────
+const GROK_API_URL = 'https://api.x.ai/v1/chat/completions';
+const GROK_MODEL = 'grok-2-latest';
 
 // ─── System Prompt (same as N8N) ─────────────────────────────────────────────
 const INTENT_SYSTEM_PROMPT = `You are a backend-safe intent parser for an elderly care voice assistant.
@@ -190,7 +190,7 @@ STRICT RULES:
 @Injectable()
 export class VoiceAssistantService {
     private readonly logger = new Logger(VoiceAssistantService.name);
-    private readonly hfApiKey: string;
+    private readonly xaiApiKey: string;
 
     constructor(
         private readonly configService: ConfigService,
@@ -210,10 +210,10 @@ export class VoiceAssistantService {
         @InjectRepository(Vitals, 'vitals')
         private readonly vitalsRepository: Repository<Vitals>,
     ) {
-        this.hfApiKey =
-            this.configService.get<string>('HUGGINGFACE_API_KEY') ||
+        this.xaiApiKey =
+            this.configService.get<string>('XAI_API_KEY') ||
+            this.configService.get<string>('GROK_API_KEY') ||
             this.configService.get<string>('N8N_API_KEY') ||
-            this.configService.get<string>('HF_TOKEN') ||
             '';
     }
 
@@ -233,11 +233,11 @@ export class VoiceAssistantService {
             this.logger.log(`[VoiceAssistant] Executing pre-confirmed intent for user ${userId}`);
             parsed = pendingIntent;
         } else {
-            // ── Step 1: Call HuggingFace Intent Parser ──────────────────────
+            // ── Step 1: Call Grok Intent Parser ─────────────────────────────────
             try {
-                parsed = await this.callHuggingFaceIntentParser(text, jwt);
+                parsed = await this.callGrokIntentParser(text, jwt);
             } catch (err) {
-                this.logger.error(`[VoiceAssistant] HF Intent Parser failed: ${err.message}`);
+                this.logger.error(`[VoiceAssistant] Grok Intent Parser failed: ${err.message}`);
                 return this.buildErrorResponse(text, 'Sorry, I had trouble understanding that. Could you please try again?', userId);
             }
         }
@@ -335,15 +335,15 @@ export class VoiceAssistantService {
     }
 
     // ═══════════════════════════════════════════════════════════════════
-    // HuggingFace: Call DeepSeek Intent Parser
+    // Grok: Call Intent Parser
     // ═══════════════════════════════════════════════════════════════════
-    private async callHuggingFaceIntentParser(text: string, jwt: string): Promise<ParsedIntent> {
-        if (!this.hfApiKey) {
-            throw new Error('No HuggingFace API token configured (HUGGINGFACE_API_KEY)');
+    private async callGrokIntentParser(text: string, jwt: string): Promise<ParsedIntent> {
+        if (!this.xaiApiKey) {
+            throw new Error('No Grok API token configured (XAI_API_KEY or GROK_API_KEY)');
         }
 
         const payload = {
-            model: HF_MODEL,
+            model: GROK_MODEL,
             messages: [
                 { role: 'system', content: INTENT_SYSTEM_PROMPT },
                 { role: 'user', content: `JWT: ${jwt}\n\nUser said: "${text}"` },
@@ -353,9 +353,9 @@ export class VoiceAssistantService {
         };
 
         try {
-            const response = await axios.post(HF_API_URL, payload, {
+            const response = await axios.post(GROK_API_URL, payload, {
                 headers: {
-                    Authorization: `Bearer ${this.hfApiKey}`,
+                    Authorization: `Bearer ${this.xaiApiKey}`,
                     'Content-Type': 'application/json',
                 },
                 timeout: 30000,
@@ -363,7 +363,7 @@ export class VoiceAssistantService {
 
             const content = response.data?.choices?.[0]?.message?.content;
             if (!content) {
-                throw new Error('No content returned from HuggingFace');
+                throw new Error('No content returned from Grok');
             }
 
             return this.parseAIResponse(content, text, jwt);
@@ -372,7 +372,7 @@ export class VoiceAssistantService {
                 const status = error.response.status;
                 const body = error.response.data;
                 const errorSnippet = JSON.stringify(body).substring(0, 1000);
-                this.logger.error(`[VoiceAssistant] Hugging Face API Error (${status}): ${errorSnippet}`);
+                this.logger.error(`[VoiceAssistant] Grok API Error (${status}): ${errorSnippet}`);
             }
             this.logger.error(`[VoiceAssistant] Intent parsing failed: ${error.message}`);
             return this.getFallbackIntent(text, jwt);

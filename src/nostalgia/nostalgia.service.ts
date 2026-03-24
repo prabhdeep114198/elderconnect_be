@@ -11,7 +11,7 @@ import { v4 as uuidv4 } from 'uuid';
 @Injectable()
 export class NostalgiaService {
   private readonly logger = new Logger(NostalgiaService.name);
-  private readonly hfApiKey: string;
+  private readonly xaiApiKey: string;
   private readonly containerName = 'elderconnect-memories';
   private blobServiceClient: BlobServiceClient | null = null;
 
@@ -30,9 +30,9 @@ export class NostalgiaService {
     private readonly memoryRepository: Repository<NostalgiaMemory>,
     private readonly configService: ConfigService,
   ) {
-    this.hfApiKey =
-      this.configService.get<string>('HUGGINGFACE_API_KEY') ||
-      this.configService.get<string>('HF_TOKEN') ||
+    this.xaiApiKey =
+      this.configService.get<string>('XAI_API_KEY') ||
+      this.configService.get<string>('GROK_API_KEY') ||
       '';
 
     const azureConnectionString = this.configService.get<string>('AZURE_STORAGE_CONNECTION_STRING');
@@ -52,7 +52,7 @@ export class NostalgiaService {
 
     const recentTopics = recentMemories.map(m => m.prompt).join('\\n');
 
-    if (!this.hfApiKey) {
+    if (!this.xaiApiKey) {
       return this.getRandomFallbackPrompt();
     }
 
@@ -64,7 +64,7 @@ ${recentTopics}`;
 
     try {
       const payload = {
-        model: 'deepseek-ai/DeepSeek-V3-0324',
+        model: 'grok-2-latest',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: "Generate the next nostalgic memory prompt." },
@@ -73,9 +73,9 @@ ${recentTopics}`;
         max_tokens: 150,
       };
 
-      const response = await axios.post('https://router.huggingface.co/v1/chat/completions', payload, {
+      const response = await axios.post('https://api.x.ai/v1/chat/completions', payload, {
         headers: {
-          Authorization: `Bearer ${this.hfApiKey}`,
+          Authorization: `Bearer ${this.xaiApiKey}`,
           'Content-Type': 'application/json',
         },
         timeout: 10000,
