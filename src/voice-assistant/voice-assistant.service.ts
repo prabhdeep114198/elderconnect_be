@@ -19,9 +19,9 @@ import { SocialEvent } from '../profile/entities/social-event.entity';
 // Vitals entity
 import { Vitals } from '../device/entities/vitals.entity';
 
-// ─── Grok Config ─────────────────────────────────────────────────────────────
-const GROK_API_URL = 'https://api.x.ai/v1/chat/completions';
-const GROK_MODEL = 'grok-2-latest';
+// ─── Groq Config ─────────────────────────────────────────────────────────────
+const GROK_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+const GROK_MODEL = 'llama3-70b-8192';
 
 // ─── System Prompt (same as N8N) ─────────────────────────────────────────────
 const INTENT_SYSTEM_PROMPT = `You are a backend-safe intent parser for an elderly care voice assistant.
@@ -211,9 +211,8 @@ export class VoiceAssistantService {
         private readonly vitalsRepository: Repository<Vitals>,
     ) {
         this.xaiApiKey =
-            this.configService.get<string>('XAI_API_KEY') ||
+            this.configService.get<string>('GROQ_API_KEY') ||
             this.configService.get<string>('GROK_API_KEY') ||
-            this.configService.get<string>('N8N_API_KEY') ||
             '';
     }
 

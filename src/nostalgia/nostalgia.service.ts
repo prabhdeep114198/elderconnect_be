@@ -31,7 +31,7 @@ export class NostalgiaService {
     private readonly configService: ConfigService,
   ) {
     this.xaiApiKey =
-      this.configService.get<string>('XAI_API_KEY') ||
+      this.configService.get<string>('GROQ_API_KEY') ||
       this.configService.get<string>('GROK_API_KEY') ||
       '';
 
@@ -64,7 +64,7 @@ ${recentTopics}`;
 
     try {
       const payload = {
-        model: 'grok-2-latest',
+        model: 'llama3-70b-8192',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: "Generate the next nostalgic memory prompt." },
@@ -73,7 +73,7 @@ ${recentTopics}`;
         max_tokens: 150,
       };
 
-      const response = await axios.post('https://api.x.ai/v1/chat/completions', payload, {
+      const response = await axios.post('https://api.groq.com/openai/v1/chat/completions', payload, {
         headers: {
           Authorization: `Bearer ${this.xaiApiKey}`,
           'Content-Type': 'application/json',
