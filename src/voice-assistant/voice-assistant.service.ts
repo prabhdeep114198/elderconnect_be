@@ -21,7 +21,7 @@ import { Vitals } from '../device/entities/vitals.entity';
 
 // ─── Groq Config ─────────────────────────────────────────────────────────────
 const GROK_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const GROK_MODEL = 'llama3-70b-8192';
+const GROK_MODEL = 'llama-3.3-70b-versatile';
 
 // ─── System Prompt (same as N8N) ─────────────────────────────────────────────
 const INTENT_SYSTEM_PROMPT = `You are a backend-safe intent parser for an elderly care voice assistant.
