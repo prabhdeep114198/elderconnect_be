@@ -74,17 +74,17 @@ Respond to the user message below.
 
             const userMessage = request.message && request.message.trim() !== "" ? request.message : "Hello!";
 
-            // Call HuggingFace
-            this.logger.debug('Calling HuggingFace API...');
-            const hfApiKey = this.configService.get<string>('HUGGINGFACE_API_KEY') || process.env.HUGGINGFACE_API_KEY;
-            const response = await fetch('https://router.huggingface.co/v1/chat/completions', {
+            // Call Groq API
+            this.logger.debug('Calling Groq API...');
+            const groqApiKey = this.configService.get<string>('GROQ_API_KEY') || process.env.GROQ_API_KEY;
+            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${hfApiKey}`,
+                    'Authorization': `Bearer ${groqApiKey}`,
                 },
                 body: JSON.stringify({
-                    model: 'meta-llama/Meta-Llama-3-8B-Instruct',
+                    model: 'llama-3.1-8b-instant',
                     messages: [
                         { role: 'system', content: systemPrompt },
                         { role: 'user', content: userMessage }
@@ -94,8 +94,8 @@ Respond to the user message below.
 
             if (!response.ok) {
                 const errText = await response.text();
-                this.logger.error(`HuggingFace API Error (${response.status}): ${errText}`);
-                throw new Error(`HuggingFace API responded with status: ${response.status}`);
+                this.logger.error(`Groq API Error (${response.status}): ${errText}`);
+                throw new Error(`Groq API responded with status: ${response.status}`);
             }
 
             const responseData = await response.json();
@@ -269,7 +269,7 @@ Each item in the array must be an object with:
 "icon" (string - use one of: "sunny-outline", "partly-sunny-outline", "nutrition-outline", "moon-outline", "fast-food-outline")
 `;
 
-        const hfApiKey = this.configService.get<string>('HUGGINGFACE_API_KEY') || process.env.HUGGINGFACE_API_KEY;
+        const groqApiKey = this.configService.get<string>('GROQ_API_KEY') || process.env.GROQ_API_KEY;
         const fallbackMeals = dietType === 'vegetarian' ? [
             {
                 meal: 'Breakfast', time: '08:00 AM', food: 'Oatmeal with Blueberries', calories: 280, icon: 'sunny-outline',
@@ -299,11 +299,11 @@ Each item in the array must be an object with:
         ];
 
         try {
-            const response = await fetch('https://router.huggingface.co/v1/chat/completions', {
+            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${hfApiKey}` },
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${groqApiKey}` },
                 body: JSON.stringify({
-                    model: 'meta-llama/Meta-Llama-3-8B-Instruct',
+                    model: 'llama-3.1-8b-instant',
                     messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: "Generate meal plan." }],
                     temperature: 0.2
                 }),
@@ -351,7 +351,7 @@ Each item in the array must be an object with:
 "icon" (string - use one of: "body-outline", "walk-outline", "accessibility-outline", "bicycle-outline", "fitness-outline")
 `;
 
-        const hfApiKey = this.configService.get<string>('HUGGINGFACE_API_KEY') || process.env.HUGGINGFACE_API_KEY;
+        const groqApiKey = this.configService.get<string>('GROQ_API_KEY') || process.env.GROQ_API_KEY;
         const fallbackExercises = [
             {
                 title: 'Seated Leg Extensions', desc: 'Improves quadriceps strength.', duration: '5 mins', reps: '10 reps', icon: 'body-outline'
@@ -365,11 +365,11 @@ Each item in the array must be an object with:
         ];
 
         try {
-            const response = await fetch('https://router.huggingface.co/v1/chat/completions', {
+            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${hfApiKey}` },
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${groqApiKey}` },
                 body: JSON.stringify({
-                    model: 'meta-llama/Meta-Llama-3-8B-Instruct',
+                    model: 'llama-3.1-8b-instant',
                     messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: "Generate exercises." }],
                     temperature: 0.2
                 }),
