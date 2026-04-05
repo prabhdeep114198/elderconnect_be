@@ -24,10 +24,10 @@ export class TwilioService {
   private readonly fromNumber: string;
 
   constructor(private readonly configService: ConfigService) {
-    // Make these optional since we are switching to N8N
-    const accountSid = this.configService.get<string>('twilio.accountSid');
-    const authToken = this.configService.get<string>('twilio.authToken');
-    this.fromNumber = this.configService.get<string>('twilio.phoneNumber') || '';
+    // Trim values to avoid issues with trailing spaces from .env files
+    const accountSid = this.configService.get<string>('twilio.accountSid')?.trim();
+    const authToken = this.configService.get<string>('twilio.authToken')?.trim();
+    this.fromNumber = this.configService.get<string>('twilio.phoneNumber')?.trim() || '';
 
     if (!accountSid || !authToken || !this.fromNumber) {
       this.logger.warn(`Twilio credentials not configured properly: accountSid=${!!accountSid}, authToken=${!!authToken}, phoneNumber=${!!this.fromNumber}. SMS and voice services will be disabled.`);
@@ -35,7 +35,7 @@ export class TwilioService {
     }
 
     this.client = new Twilio(accountSid, authToken);
-    this.logger.log('Twilio service initialized successfully');
+    this.logger.log(`Twilio service initialized successfully using SID: ...${accountSid.slice(-4)}`);
   }
 
   async sendSMS(to: string, message: string, priority: string = 'normal'): Promise<SMSResult> {
@@ -228,16 +228,18 @@ export class TwilioService {
   }
 
   private formatPhoneNumber(phoneNumber: string): string {
+    // If it already starts with +, just return it trimmed
+    if (phoneNumber.trim().startsWith('+')) {
+      return phoneNumber.trim();
+    }
+
     // Remove all non-digit characters
     const digits = phoneNumber.replace(/\D/g, '');
 
-    // Add country code if not present (assuming US/Canada)
+    // Default to +91 for 10-digit numbers if no prefix (assuming India context)
+    // You can change this to +1 if you prefer US context by default
     if (digits.length === 10) {
-      return `+1${digits}`;
-    } else if (digits.length === 11 && digits.startsWith('1')) {
-      return `+${digits}`;
-    } else if (digits.startsWith('+')) {
-      return phoneNumber;
+      return `+91${digits}`;
     }
 
     return `+${digits}`;
