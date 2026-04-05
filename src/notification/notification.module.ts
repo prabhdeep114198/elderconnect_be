@@ -11,10 +11,13 @@ import { KafkaService } from '../device/services/kafka.service';
 import { DeviceModule } from '../device/device.module';
 import { AuditLogModule } from '../common/services/audit-log.module';
 
+import { HttpModule } from '@nestjs/axios';
+
 @Module({
   imports: [
     TypeOrmModule.forFeature([Notification, NotificationTemplate], 'audit'),
     AuditLogModule,
+    HttpModule,
     forwardRef(() => DeviceModule),
     ScheduleModule.forRoot(),
   ],

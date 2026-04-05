@@ -14,6 +14,7 @@ import { TwilioService } from './services/twilio.service';
 import { FCMService } from './services/fcm.service';
 import { KafkaService } from '../device/services/kafka.service';
 import { AlertPriority } from '../common/enums/user-role.enum';
+import { ConfigService } from '@nestjs/config';
 
 export interface CreateNotificationDto {
   userId: string;
@@ -51,6 +52,7 @@ export class NotificationService implements OnModuleInit {
     private readonly twilioService: TwilioService,
     private readonly fcmService: FCMService,
     private readonly kafkaService: KafkaService,
+    private readonly configService: ConfigService,
   ) { }
 
   async onModuleInit() {
@@ -416,6 +418,7 @@ export class NotificationService implements OnModuleInit {
     message: string,
     location?: { latitude: number; longitude: number },
   ): Promise<Notification[]> {
+    this.logger.log(`🚨 Triggering SOS emergency notification for user ${userId}`);
     const notifications: Notification[] = [];
 
     for (const contact of emergencyContacts) {
@@ -501,7 +504,7 @@ export class NotificationService implements OnModuleInit {
     return notifications;
   }
 
-  // Health Reminders (N8N Workflow implementation natively)
+  // Health Reminders
   async scheduleHealthReminder(
     userId: string,
     data: {
