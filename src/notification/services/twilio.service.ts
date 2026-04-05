@@ -73,7 +73,11 @@ export class TwilioService {
         status: twilioMessage.status,
       };
     } catch (error) {
+      const accountSid = this.configService.get<string>('twilio.accountSid')?.trim();
+      const authToken = this.configService.get<string>('twilio.authToken')?.trim();
+      
       this.logger.error(`Failed to send SMS to ${to}:`, error);
+      this.logger.error(`DEBUG INFO: UseFrom=${this.fromNumber}, SID_Length=${accountSid?.length}, Token_Length=${authToken?.length}`);
 
       return {
         success: false,
