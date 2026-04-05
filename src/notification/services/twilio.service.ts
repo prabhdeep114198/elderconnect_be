@@ -27,11 +27,10 @@ export class TwilioService {
     // Make these optional since we are switching to N8N
     const accountSid = this.configService.get<string>('twilio.accountSid');
     const authToken = this.configService.get<string>('twilio.authToken');
-    // Don't throw if missing, just default to empty string or null
-    this.fromNumber = this.configService.get<string>('twilio.fromNumber') || '';
+    this.fromNumber = this.configService.get<string>('twilio.phoneNumber') || '';
 
     if (!accountSid || !authToken || !this.fromNumber) {
-      this.logger.warn('Twilio credentials not configured. SMS and voice services will be disabled (Using N8N).');
+      this.logger.warn(`Twilio credentials not configured properly: accountSid=${!!accountSid}, authToken=${!!authToken}, phoneNumber=${!!this.fromNumber}. SMS and voice services will be disabled.`);
       return;
     }
 
@@ -48,6 +47,7 @@ export class TwilioService {
     }
 
     try {
+      this.logger.log(`Initiating SMS to ${to} with message: ${message.substring(0, 50)}...`);
       // Validate phone number format
       const formattedNumber = this.formatPhoneNumber(to);
 
