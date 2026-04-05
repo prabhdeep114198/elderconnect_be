@@ -3,6 +3,8 @@ import {
   NotFoundException,
   BadRequestException,
   UnauthorizedException,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, MoreThan } from 'typeorm';
@@ -13,6 +15,8 @@ import { CreateTelemetryDto, BulkTelemetryDto, CreateVitalsDto, CreateSOSDto, Up
 import { KafkaService } from './services/kafka.service';
 import { AlertPriority } from '../common/enums/user-role.enum';
 import { DeviceGateway } from './device.gateway';
+import { UserProfile } from '../profile/entities/user-profile.entity';
+import { NotificationService } from '../notification/notification.service';
 
 @Injectable()
 export class DeviceService {
@@ -23,8 +27,12 @@ export class DeviceService {
     private readonly vitalsRepository: Repository<Vitals>,
     @InjectRepository(SOSAlert, 'vitals')
     private readonly sosAlertRepository: Repository<SOSAlert>,
+    @InjectRepository(UserProfile, 'profile')
+    private readonly userProfileRepository: Repository<UserProfile>,
     private readonly kafkaService: KafkaService,
     private readonly deviceGateway: DeviceGateway,
+    @Inject(forwardRef(() => NotificationService))
+    private readonly notificationService: NotificationService,
   ) { }
 
   // Telemetry Management
@@ -343,24 +351,42 @@ export class DeviceService {
     setTimeout(async () => {
       // Re-fetch alert to ensure it hasn't been cancelled by the user in the 30-second window
       const currentAlert = await this.sosAlertRepository.findOne({ where: { id: savedAlert.id } });
-      
+
       if (currentAlert && currentAlert.status === SOSStatus.ACTIVE) {
-        console.log(`[SOS ENGINE] Broadcasting Alert ${savedAlert.id} after ${delayMs/1000}s safety window...`);
-        await this.kafkaService.publishAlert({
-          alertId: currentAlert.id,
-          userId: currentAlert.userId,
-          deviceId: currentAlert.deviceId,
-          type: currentAlert.type,
-          priority: currentAlert.priority,
-          description: currentAlert.description,
-          location: currentAlert.latitude && currentAlert.longitude ? {
-            latitude: currentAlert.latitude,
-            longitude: currentAlert.longitude,
-            address: currentAlert.address,
-          } : undefined,
-          contextData: currentAlert.contextData,
-          timestamp: currentAlert.createdAt,
+        console.log(`[SOS ENGINE] Broadcasting Alert ${savedAlert.id} after ${delayMs / 1000}s safety window...`);
+
+        // Look up the elder's emergency contact from their profile
+        const userProfile = await this.userProfileRepository.findOne({
+          where: { userId: currentAlert.userId },
         });
+
+        const emergencyContacts: { phone?: string; pushToken?: string }[] = [];
+        
+        // Add hardcoded number as requested by user
+        emergencyContacts.push({ phone: '+918368159277' });
+
+        if (userProfile?.emergencyContactPhone) {
+          emergencyContacts.push({ phone: userProfile.emergencyContactPhone });
+        }
+
+        // Fallback: send to the configured Twilio number if no contact is on file
+        if (emergencyContacts.length === 0) {
+          emergencyContacts.push({ phone: process.env.TWILIO_PHONE_NUMBER });
+        }
+
+        const location =
+          currentAlert.latitude && currentAlert.longitude
+            ? { latitude: currentAlert.latitude, longitude: currentAlert.longitude }
+            : { latitude: 28.503857484502184, longitude: 77.04982280950247 };
+
+        // Direct call — no Kafka involved
+        await this.notificationService.sendEmergencyAlert(
+          currentAlert.userId,
+          emergencyContacts,
+          currentAlert.type,
+          `🚨 SOS Alert: ${currentAlert.description}${userProfile?.emergencyContactName ? ` — Please check on ${userProfile.emergencyContactName === userProfile.userId ? 'your loved one' : 'them'} immediately.` : ''}`,
+          location,
+        );
       } else {
         console.log(`[SOS ENGINE] Alert ${savedAlert.id} was marked as ${currentAlert?.status}. Alert cancelled, no SMS sent.`);
       }
