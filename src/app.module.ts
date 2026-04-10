@@ -43,6 +43,7 @@ import { CommonCacheModule } from './common/services/cache.module';
 import { PersonalizationModule } from './personalization/personalization.module';
 import { VoiceAssistantModule } from './voice-assistant/voice-assistant.module';
 import { NostalgiaModule } from './nostalgia/nostalgia.module';
+import { AiModule } from './ai/ai.module';
 
 // Common interceptors
 import { AuditLogInterceptor } from './common/interceptors/audit-log.interceptor';
@@ -253,6 +254,7 @@ import { NostalgiaMemory } from './nostalgia/entities/nostalgia-memory.entity';
     PersonalizationModule,
     VoiceAssistantModule,
     NostalgiaModule,
+    AiModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

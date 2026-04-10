@@ -8,9 +8,11 @@ import { UserProfile } from '../profile/entities/user-profile.entity';
 import { Appointment } from '../profile/entities/appointment.entity';
 import { Medication } from '../profile/entities/medication.entity';
 import { SocialEvent } from '../profile/entities/social-event.entity';
+import { DailyHealthMetric } from '../profile/entities/daily-health-metric.entity';
 
 // Vitals entity
 import { Vitals } from '../device/entities/vitals.entity';
+import { PersonalizationModule } from '../personalization/personalization.module';
 
 @Module({
     imports: [
@@ -18,11 +20,13 @@ import { Vitals } from '../device/entities/vitals.entity';
             UserProfile,
             Appointment,
             Medication,
-            SocialEvent
+            SocialEvent,
+            DailyHealthMetric
         ], 'profile'),
         TypeOrmModule.forFeature([
             Vitals
         ], 'vitals'),
+        PersonalizationModule,
     ],
     controllers: [VoiceAssistantController],
     providers: [VoiceAssistantService],

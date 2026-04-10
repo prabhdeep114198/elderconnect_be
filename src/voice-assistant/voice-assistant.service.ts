@@ -18,22 +18,39 @@ import { SocialEvent } from '../profile/entities/social-event.entity';
 
 // Vitals entity
 import { Vitals } from '../device/entities/vitals.entity';
+import { PersonalizationService } from '../personalization/personalization.service';
+import { DailyHealthMetric } from '../profile/entities/daily-health-metric.entity';
 
 // ─── Groq Config ─────────────────────────────────────────────────────────────
 const GROK_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const GROK_MODEL = 'llama-3.3-70b-versatile';
 
 // ─── System Prompt (same as N8N) ─────────────────────────────────────────────
-const INTENT_SYSTEM_PROMPT = `You are a backend-safe intent parser for an elderly care voice assistant.
+const INTENT_SYSTEM_PROMPT = `You are a warm, multilingual voice assistant for ElderConnect, an elderly care app.
 
 Your job is to:
-1. Correct grammar
-2. Detect intent
-3. Extract structured fields
-4. Output STRICT, backend-ready JSON
+1. Detect the language the user is speaking (e.g. Hindi, English, Hinglish)
+2. Correct grammar in that language
+3. Detect intent
+4. Extract structured fields
+5. Output STRICT, backend-ready JSON
+
+LANGUAGE RULE (CRITICAL):
+- Detect the language from the user's input.
+- ALWAYS write the "message" field in the SAME language the user spoke.
+- If the user spoke Hindi, respond in Hindi (Devanagari script preferred, e.g., "आपकी दवाई नोट कर ली गई है।")
+- If the user spoke Hinglish (Hindi + English mix), respond in Hinglish.
+- If the user spoke English, respond in English.
+- You MUST include a "detectedLanguage" field at the top level with values like: "en", "hi", "hi-en" (Hinglish)
 
 You MUST classify every request into EXACTLY ONE of these values:
-CREATE_EVENT | LOG_VITAL | REMINDER | QUERY_INFO | NAVIGATE | EMERGENCY_SOS | FALL_RISK_CHECK | MEDICATION_CHECK | ERROR | UNKNOWN
+CREATE_EVENT | LOG_VITAL | REMINDER | QUERY_INFO | NAVIGATE | EMERGENCY_SOS | FALL_RISK_CHECK | MEDICATION_CHECK | CONVERSATIONAL | ERROR | UNKNOWN
+
+PERSONALIZED CONTEXT:
+{{userContext}}
+
+If the user asks about their day, how they are doing, or general questions, use the CONVERSATIONAL format.
+Always be empathetic, friendly, and use the user's name if provided in the context.
 
 The incoming request ALWAYS includes a JWT.
 You MUST return the SAME jwt value unchanged.
@@ -156,6 +173,15 @@ FORMAT FOR MEDICATION_CHECK (User asks about their medications):
   "data": {}
 }
 
+FORMAT FOR CONVERSATIONAL (Small talk, "how was my day", greetings, general knowledge):
+{
+  "typeOfRequest": "CONVERSATIONAL",
+  "correctedText": "...",
+  "message": "Write a friendly, personalized response here. If they asked about their day, use the provided health metrics context to give a summary.",
+  "jwt": "same string",
+  "data": {}
+}
+
 FORMAT FOR ERROR / UNKNOWN:
 {
   "typeOfRequest": "ERROR" | "UNKNOWN",
@@ -180,11 +206,25 @@ NAVIGATION KEYWORD GUIDE (use these to detect NAVIGATE intent):
 EMERGENCY KEYWORDS (use EMERGENCY_SOS intent):
 - "help me", "emergency", "SOS", "I fell", "call for help", "I need help", "call 911"
 
+CONVERSATIONAL TRIGGERS (use CONVERSATIONAL intent):
+- Greetings (EN): "hello", "hi", "hey", "good morning", "good evening"
+- Greetings (HI): "नमस्ते", "हेलो", "सुप्रभात", "शुभ संध्या"
+- Day recap: "how was my day", "how did I do today", "aaj mera din kaisa tha", "mera din kaisa raha"
+- Day recap (HI): "आज का दिन कैसा था", "मैं कैसा कर रहा हूँ"
+- Feelings: "how are you", "aap kaise ho", "kya haal hai"
+- General knowledge: "what is", "who is", "tell me about", "explain", "kya hai", "batao", "bataiye"
+- Jokes & fun: "tell me a joke", "ek joke sunao", "kuch funny bolo"
+- Compliments & chat: "you're great", "thanks", "shukriya", "dhanyavaad"
+- Any question that does not fit CREATE_EVENT, LOG_VITAL, REMINDER, NAVIGATE, EMERGENCY_SOS, FALL_RISK_CHECK, or MEDICATION_CHECK
+
+IMPORTANT: When the intent is CONVERSATIONAL and the user asked about their day or health, use the PERSONALIZED CONTEXT section above to craft a warm, specific, data-driven response in the user's language.
+
 STRICT RULES:
 - Output ONLY JSON
 - No markdown formatting wrappers like \`\`\`json
 - No explanations
 - No extra text
+- ALWAYS include "detectedLanguage" as a top-level field
 - Do not include fields in the "data" object that do not belong to the specific format shown above`;
 
 @Injectable()
@@ -209,6 +249,11 @@ export class VoiceAssistantService {
 
         @InjectRepository(Vitals, 'vitals')
         private readonly vitalsRepository: Repository<Vitals>,
+
+        @InjectRepository(DailyHealthMetric, 'profile')
+        private readonly healthMetricRepository: Repository<DailyHealthMetric>,
+
+        private readonly personalizationService: PersonalizationService,
     ) {
         this.xaiApiKey =
             this.configService.get<string>('GROQ_API_KEY') ||
@@ -227,14 +272,17 @@ export class VoiceAssistantService {
 
         let parsed: ParsedIntent;
 
+        // ── Step 1: Gather Rich Context for AI ─────────────────────────────
+        const richContextBrief = await this.getRichUserContext(userId);
+
         if (isConfirmation && pendingIntent) {
             // User confirmed the action, bypass AI parsing and execute
             this.logger.log(`[VoiceAssistant] Executing pre-confirmed intent for user ${userId}`);
             parsed = pendingIntent;
         } else {
-            // ── Step 1: Call Grok Intent Parser ─────────────────────────────────
+            // ── Step 2: Call Grok Intent Parser ─────────────────────────────────
             try {
-                parsed = await this.callGrokIntentParser(text, jwt);
+                parsed = await this.callGrokIntentParser(text, jwt, richContextBrief);
             } catch (err) {
                 this.logger.error(`[VoiceAssistant] Grok Intent Parser failed: ${err.message}`);
                 return this.buildErrorResponse(text, 'Sorry, I had trouble understanding that. Could you please try again?', userId);
@@ -262,6 +310,7 @@ export class VoiceAssistantService {
                 action: parsed.typeOfRequest,
                 originalText,
                 correctedText: parsed.correctedText || text,
+                detectedLanguage: parsed.detectedLanguage || 'en',
                 message: `${parsed.message} Should I save this?`,
                 timestamp: new Date().toISOString(),
             };
@@ -288,6 +337,7 @@ export class VoiceAssistantService {
                     action: 'NAVIGATE',
                     originalText,
                     correctedText: parsed.correctedText || text,
+                    detectedLanguage: parsed.detectedLanguage || 'en',
                     message: parsed.message || 'Navigating...',
                     timestamp: new Date().toISOString(),
                     data: parsed.data,
@@ -300,6 +350,7 @@ export class VoiceAssistantService {
                     action: 'EMERGENCY_SOS',
                     originalText,
                     correctedText: parsed.correctedText || text,
+                    detectedLanguage: parsed.detectedLanguage || 'en',
                     message: parsed.message || 'Initiating emergency SOS.',
                     timestamp: new Date().toISOString(),
                 };
@@ -310,12 +361,24 @@ export class VoiceAssistantService {
             case 'MEDICATION_CHECK':
                 return this.handleMedicationCheck(userId, originalText, parsed.correctedText || text);
 
+            case 'CONVERSATIONAL':
+                return {
+                    success: true,
+                    action: 'CONVERSATIONAL',
+                    originalText,
+                    correctedText: parsed.correctedText || text,
+                    detectedLanguage: parsed.detectedLanguage || 'en',
+                    message: parsed.message || "I'm here to help!",
+                    timestamp: new Date().toISOString(),
+                };
+
             case 'ERROR':
                 return {
                     success: false,
                     action: 'ERROR',
                     originalText,
                     correctedText: parsed.correctedText || text,
+                    detectedLanguage: parsed.detectedLanguage || 'en',
                     message: parsed.message || 'There was an error processing your request.',
                     timestamp: new Date().toISOString(),
                 };
@@ -327,6 +390,7 @@ export class VoiceAssistantService {
                     action: 'UNKNOWN',
                     originalText,
                     correctedText: parsed.correctedText || text,
+                    detectedLanguage: parsed.detectedLanguage || 'en',
                     message: parsed.message || "I'm not sure what you mean. Could you rephrase?",
                     timestamp: new Date().toISOString(),
                 };
@@ -336,15 +400,17 @@ export class VoiceAssistantService {
     // ═══════════════════════════════════════════════════════════════════
     // Grok: Call Intent Parser
     // ═══════════════════════════════════════════════════════════════════
-    private async callGrokIntentParser(text: string, jwt: string): Promise<ParsedIntent> {
+    private async callGrokIntentParser(text: string, jwt: string, contextBrief?: string): Promise<ParsedIntent> {
         if (!this.xaiApiKey) {
             throw new Error('No Grok API token configured (XAI_API_KEY or GROK_API_KEY)');
         }
 
+        const systemPromptWithContext = INTENT_SYSTEM_PROMPT.replace('{{userContext}}', contextBrief || 'No specific context provided.');
+
         const payload = {
             model: GROK_MODEL,
             messages: [
-                { role: 'system', content: INTENT_SYSTEM_PROMPT },
+                { role: 'system', content: systemPromptWithContext },
                 { role: 'user', content: `JWT: ${jwt}\n\nUser said: "${text}"` },
             ],
             temperature: 0.2,
@@ -375,6 +441,39 @@ export class VoiceAssistantService {
             }
             this.logger.error(`[VoiceAssistant] Intent parsing failed: ${error.message}`);
             return this.getFallbackIntent(text, jwt);
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // Rich Context Gathering
+    // ═══════════════════════════════════════════════════════════════════
+    private async getRichUserContext(userId: string): Promise<string> {
+        try {
+            const context = await this.personalizationService.getChatbotContext(userId);
+            const today = new Date().toISOString().split('T')[0];
+            const metrics = await this.healthMetricRepository.findOne({
+                where: { userProfileId: userId, date: today as any },
+            });
+
+            const parts: string[] = [];
+            parts.push(`User Name: ${context.userId}`); // Usually includes name if available
+            parts.push(`Medical Conditions: ${context.profileSummary.conditions.join(', ')}`);
+            parts.push(`Interests/Hobbies: ${context.profileSummary.hobbies.join(', ')}`);
+            
+            if (metrics) {
+                parts.push(`Today's Activity: ${metrics.steps} steps, ${metrics.sleepHours} hours of sleep, ${metrics.waterIntake} cups of water.`);
+            } else {
+                parts.push("Today's health metrics haven't been logged yet.");
+            }
+
+            if (context.primaryConcerns.length > 0) {
+                parts.push(`Primary Health Concerns: ${context.primaryConcerns.join(', ')}`);
+            }
+
+            return parts.join('\n');
+        } catch (err) {
+            this.logger.error(`[VoiceAssistant] Failed to gather rich context: ${err.message}`);
+            return "General elderly care assistant context.";
         }
     }
 
@@ -552,6 +651,7 @@ export class VoiceAssistantService {
             } else if (queryType.includes('weather') || lowerText.includes('weather')) {
                 message = "The weather data is not fully integrated yet, but please make sure to dress comfortably if you go out today!";
             }
+            // For all other query types, the AI-generated message is already accurate — use it directly.
 
             return {
                 success: true,

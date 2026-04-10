@@ -50,6 +50,7 @@ export type IntentType =
     | 'EMERGENCY_SOS'
     | 'FALL_RISK_CHECK'
     | 'MEDICATION_CHECK'
+    | 'CONVERSATIONAL'
     | 'ERROR'
     | 'UNKNOWN';
 
@@ -79,6 +80,7 @@ export interface ParsedIntent {
     correctedText: string;
     message: string;
     jwt: string;
+    detectedLanguage?: string;  // 'en' | 'hi' | 'hi-en' etc.
     data: ParsedIntentData;
 }
 
@@ -89,6 +91,7 @@ export interface VoiceAssistantResponse {
     correctedText: string;
     message: string;
     timestamp: string;
+    detectedLanguage?: string;  // language code for TTS on frontend
     eventId?: string;
     vitalId?: string;
     medicationId?: string;
