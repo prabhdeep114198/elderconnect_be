@@ -44,6 +44,7 @@ import { PersonalizationModule } from './personalization/personalization.module'
 import { VoiceAssistantModule } from './voice-assistant/voice-assistant.module';
 import { NostalgiaModule } from './nostalgia/nostalgia.module';
 import { AiModule } from './ai/ai.module';
+import { DeteriorationModule } from './deterioration/deterioration.module';
 
 // Common interceptors
 import { AuditLogInterceptor } from './common/interceptors/audit-log.interceptor';
@@ -110,7 +111,7 @@ import { NostalgiaMemory } from './nostalgia/entities/nostalgia-memory.entity';
       useFactory: async (configService: ConfigService) => {
         const host = configService.get('REDIS_HOST');
         if (process.env.NODE_ENV === 'production' && (!host || host === 'localhost')) {
-           return { ttl: 300 }; // Bypass Redis entirely on Azure if no real host provided
+          return { ttl: 300 }; // Bypass Redis entirely on Azure if no real host provided
         }
         return {
           store: require('cache-manager-ioredis-yet'),
@@ -255,6 +256,7 @@ import { NostalgiaMemory } from './nostalgia/entities/nostalgia-memory.entity';
     VoiceAssistantModule,
     NostalgiaModule,
     AiModule,
+    DeteriorationModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

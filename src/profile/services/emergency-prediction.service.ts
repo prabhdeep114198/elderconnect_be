@@ -1,7 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { DailyHealthMetric } from '../entities/daily-health-metric.entity';
+import { Between } from 'typeorm';
+import { AiEngineService } from '../../ai/ai-engine.service';
 import {
   EmergencyRiskLog,
   EmergencyRiskLevel,
@@ -24,6 +25,7 @@ export class EmergencyPredictionService {
     @InjectRepository(DailyHealthMetric, 'profile')
     private readonly healthMetricRepository: Repository<DailyHealthMetric>,
     private readonly notificationService: NotificationService,
+    private readonly aiEngine: AiEngineService,
   ) { }
 
   /**
@@ -34,16 +36,30 @@ export class EmergencyPredictionService {
       `Evaluating Emergency Risk for User ${metric.userProfileId}`,
     );
 
-    // 1. Feature Engineering (Windowing) - Prompt 3 & 4
-    // In a real app, we would fetch the last 24h of data here.
-    // const history = await this.healthMetricRepository.find(...)
+    // 1. Fetch historical context (last 24 hours) for AI comparison
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    const history = await this.healthMetricRepository.find({
+      where: { 
+        userProfileId: metric.userProfileId,
+        date: Between(yesterday, new Date())
+      },
+      order: { date: 'DESC' },
+      take: 24,
+    });
+
+    // 2. Feature Engineering
     const features = this.extractFeatures(metric);
 
-    // 2. ML Inference (Anomaly & Forecast) - Prompt 5 & 6
-    const anomalyScore = await this.detectAnomalies(features);
-    const forecastProbability = await this.forecastEmergency(features);
+    // 3. AI-Driven Inference (Anomaly & Forecast)
+    const anomalyResult = await this.detectAnomalies(features, history);
+    const forecastResult = await this.forecastEmergency(features, history);
 
-    // 3. Risk Scoring - Prompt 7
+    const anomalyScore = anomalyResult.score;
+    const forecastProbability = forecastResult.probability;
+
+    // 4. Combined Risk Scoring
     const riskScore = anomalyScore * 0.4 + forecastProbability * 0.6;
     const riskLevel = this.determineRiskLevel(riskScore);
 
@@ -59,8 +75,9 @@ export class EmergencyPredictionService {
       factors: {
         anomalyScore,
         forecastProbability,
-        adherencePenalty: 0, // Todo: integration
+        adherencePenalty: 0,
         vitalSpikes: features.spikes,
+        aiReasoning: anomalyResult.reasoning || forecastResult.reasoning
       },
       alertSent: false,
     });
@@ -95,23 +112,57 @@ export class EmergencyPredictionService {
   }
 
   /**
-   * Prompt 5: Anomaly Detection Model (Stub)
-   * Real implementation would call Python Microservice (Isolation Forest)
+   * AI Anomaly Detection: Checks if current vitals are abnormal for this specific user.
    */
-  private async detectAnomalies(features: any): Promise<number> {
-    // Mock logic: High deviation = High Anomaly Score
-    if (features.spikes.length > 0) return 0.8 + Math.random() * 0.2;
-    return Math.random() * 0.3;
+  private async detectAnomalies(features: any, history: DailyHealthMetric[]): Promise<{ score: number, reasoning: string }> {
+    const systemPrompt = `You are a clinical anomaly detection agent. 
+Analyze the current vitals in the context of the user's recent history.
+Return a JSON object with: 
+- score: 0.0 to 1.0 (1.0 = highly abnormal/dangerous)
+- reasoning: brief explanation.`;
+
+    const userMessage = `
+Current Vitals: HR ${features.heartRate}, O2 ${features.o2}%. 
+History (last 24h): ${history.map(h => `HR:${h.heartRate}/O2:${h.oxygenSaturation}`).join(', ')}.
+Spikes detected: ${features.spikes.join(', ')}.`;
+
+    try {
+      const response = await this.aiEngine.generateStructuredResponse(systemPrompt, userMessage);
+      return { 
+        score: parseFloat(response.score) || 0, 
+        reasoning: response.reasoning || "Consistent with trends." 
+      };
+    } catch (err) {
+      this.logger.error(`AI Anomaly detection failed: ${err.message}`);
+      return { score: features.spikes.length > 0 ? 0.7 : 0.1, reasoning: "Fallback logic used." };
+    }
   }
 
   /**
-   * Prompt 6: Emergency Forecasting Model (Stub)
-   * Real implementation would call Python Microservice (LSTM)
+   * AI Emergency Forecast: Predicts the likelihood of an acute event in the next 12 hours.
    */
-  private async forecastEmergency(features: any): Promise<number> {
-    // Mock logic
-    if (features.o2 < 90) return 0.9;
-    return Math.random() * 0.4;
+  private async forecastEmergency(features: any, history: DailyHealthMetric[]): Promise<{ probability: number, reasoning: string }> {
+    const systemPrompt = `You are a predictive healthcare agent.
+Estimate the probability of a health emergency in the next 12 hours based on data trends.
+Return JSON:
+- probability: 0.0 to 1.0
+- reasoning: brief clinical explanation.`;
+
+    const userMessage = `
+Vitals: HR ${features.heartRate}, O2 ${features.o2}%. 
+Trend Data: ${history.length} recent data points.
+Signs of instability: ${features.spikes.length > 0 ? 'Yes' : 'No'}.`;
+
+    try {
+      const response = await this.aiEngine.generateStructuredResponse(systemPrompt, userMessage);
+      return { 
+        probability: parseFloat(response.probability) || 0, 
+        reasoning: response.reasoning || "Stable forecast." 
+      };
+    } catch (err) {
+      this.logger.error(`AI Emergency forecast failed: ${err.message}`);
+      return { probability: features.o2 < 90 ? 0.8 : 0.2, reasoning: "Fallback logic used." };
+    }
   }
 
   /**

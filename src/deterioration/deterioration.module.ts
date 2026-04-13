@@ -6,6 +6,7 @@ import { DeteriorationController } from './deterioration.controller';
 import { DailyHealthMetric } from '../profile/entities/daily-health-metric.entity';
 import { MedicationLog } from '../profile/entities/medication-log.entity';
 import { EmergencyRiskLog } from '../profile/entities/emergency-risk-log.entity';
+import { AiModule } from '../ai/ai.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { EmergencyRiskLog } from '../profile/entities/emergency-risk-log.entity'
       ],
       'profile',
     ),
+    AiModule,
   ],
   controllers: [DeteriorationController],
   providers: [TrendAnalysisService],

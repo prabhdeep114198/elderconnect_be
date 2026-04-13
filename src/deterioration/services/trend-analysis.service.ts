@@ -8,6 +8,7 @@ import {
 } from '../../profile/entities/medication-log.entity';
 import { EmergencyRiskLog } from '../../profile/entities/emergency-risk-log.entity';
 import { HealthDeteriorationTrend } from '../entities/health-deterioration-trend.entity';
+import { AiEngineService } from '../../ai/ai-engine.service';
 
 @Injectable()
 export class TrendAnalysisService {
@@ -22,6 +23,7 @@ export class TrendAnalysisService {
     private riskLogsRepo: Repository<EmergencyRiskLog>,
     @InjectRepository(HealthDeteriorationTrend, 'profile')
     private trendRepo: Repository<HealthDeteriorationTrend>,
+    private aiEngine: AiEngineService,
   ) { }
 
   async analyzeUserTrends(userProfileId: string) {
@@ -60,17 +62,26 @@ export class TrendAnalysisService {
     const missRate30d = this.calculateMissRate(medLogs30d);
     const adherenceDecline = missRate7d - missRate30d; // Positive means more misses lately
 
-    // 3. Emergency Risk Stability (Prompt 4)
+    // 3. Vitals Trends (Prompt 4)
+    const avgHR7d = this.calculateAvg(metrics7d.map(m => m.heartRate).filter(v => !!v));
+    const avgHR30d = this.calculateAvg(metrics30d.map(m => m.heartRate).filter(v => !!v));
+    const hrDelta = avgHR30d > 0 ? (avgHR7d - avgHR30d) / avgHR30d : 0;
+
+    const avgSPO27d = this.calculateAvg(metrics7d.map(m => m.oxygenSaturation).filter(v => !!v));
+    const avgSPO230d = this.calculateAvg(metrics30d.map(m => m.oxygenSaturation).filter(v => !!v));
+
+    // 4. Emergency Risk Stability (Prompt 4)
     const risks7d = await this.riskLogsRepo.find({
       where: { userProfileId, createdAt: Between(sevenDaysAgo, today) },
     });
     const avgRisk7d = this.calculateAvg(risks7d.map((r) => r.riskScore));
 
-    // 4. Feature Definition Logic (Prompt 4)
+    // 5. Feature Definition Logic (Prompt 4)
     const trendScore = this.calculateDeteriorationScore({
       mobilityDecline,
       adherenceDecline,
       avgRisk7d,
+      hrDelta
     });
 
     // 5. Save Trend
@@ -85,12 +96,12 @@ export class TrendAnalysisService {
           stepsDelta: mobilityDecline,
         },
         vitals: {
-          hr7dAvg: 0,
-          hrBaseline: 0,
-          hrDelta: 0,
-          spo27dAvg: 0,
-          spo2Baseline: 0,
-        }, // Placeholder
+          hr7dAvg: avgHR7d,
+          hrBaseline: avgHR30d,
+          hrDelta: hrDelta,
+          spo27dAvg: avgSPO27d,
+          spo2Baseline: avgSPO230d,
+        },
         adherence: {
           medMissRate7d: missRate7d,
           medMissRate30d: missRate30d,
@@ -98,14 +109,14 @@ export class TrendAnalysisService {
         },
         emergency: { risk7dAvg: avgRisk7d, risk30dAvg: 0, riskSlope: 0 },
       },
-      trendSummary: this.generateSummary(
-        mobilityDecline,
-        adherenceDecline,
-        trendScore,
-      ),
+      trendSummary: "Analyzing...", // Placeholder for AI
     });
 
-    return await this.trendRepo.save(trend);
+    const savedTrend = await this.trendRepo.save(trend);
+
+    // 6. Generate AI Summary asynchronously (or synchronously here for simple result)
+    savedTrend.trendSummary = await this.generateAiSummary(savedTrend);
+    return await this.trendRepo.save(savedTrend);
   }
 
   private calculateAvg(values: number[]): number {
@@ -133,11 +144,24 @@ export class TrendAnalysisService {
     return Math.min(100, score);
   }
 
-  private generateSummary(mob: number, adh: number, score: number): string {
-    if (score < 20) return 'Global health status is stable.';
-    const issues: string[] = [];
-    if (mob > 0.1) issues.push('gradual decline in physical activity');
-    if (adh > 0.05) issues.push('increasing medication irregularities');
-    return `Signs of ${issues.join(' and ')}. Deterioration risk at ${score}%.`;
+  private async generateAiSummary(trend: HealthDeteriorationTrend): Promise<string> {
+    const systemPrompt = `You are a longevity and geriatric specialist.
+Analyze the provided 7-day vs 30-day health trends for an elderly user.
+Write a 2-sentence summary of their "Health Trajectory".
+Be clinical yet empathetic. Use 'we' (e.g., 'We are seeing...').`;
+
+    const userMessage = `
+Deterioration Score: ${trend.deteriorationScore}/100
+Activity: 7d Avg ${trend.aggregates.physical.steps7dAvg} vs 30d Baseline ${trend.aggregates.physical.steps30dAvg}.
+Medication Miss Rate: 7d ${trend.aggregates.adherence.medMissRate7d} vs 30d ${trend.aggregates.adherence.medMissRate30d}.
+Vitals: HR Delta ${trend.aggregates.vitals.hrDelta.toFixed(2)}.`;
+
+    try {
+      const response = await this.aiEngine.generateStructuredResponse(systemPrompt, userMessage);
+      return response.summary || response.analysis || "Health status is mostly stable with minor fluctuations.";
+    } catch (err) {
+      this.logger.error(`AI Trend summary failed: ${err.message}`);
+      return "Health status shows some signs of change; maintaining current care plan is advised.";
+    }
   }
 }

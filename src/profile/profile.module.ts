@@ -17,11 +17,13 @@ import { ReminderLog } from './entities/reminder-log.entity';
 import { NotificationModule } from '../notification/notification.module';
 import { User } from '../auth/entities/user.entity';
 import { CommonCacheModule } from '../common/services/cache.module';
+import { AiModule } from '../ai/ai.module';
 
 @Module({
   imports: [
     NotificationModule,
     CommonCacheModule,
+    AiModule,
     TypeOrmModule.forFeature([
       UserProfile,
       Medication,
