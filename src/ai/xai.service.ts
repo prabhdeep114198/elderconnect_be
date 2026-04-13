@@ -84,7 +84,7 @@ JSON OUTPUT FORMAT:
 USER CONTEXT:
 - Profile: ${context.age} years old with ${context.medicalConditions.join(', ')}.
 - Current Health Score: ${context.currentScore} / 100 (${context.statusLabel})
-- Med Adherence: ${context.medication.adherenceRate}% (${context.medication.missed} missed recently)
+- Med Adherence: ${context.medication.adherenceRate}% (${context.medication.missedCount} missed recently)
 - Activity: ${context.trends.activityChange}% change in steps.
 - Sleep: ${context.trends.sleepChange}% change.
 - Recent Insights: ${context.anomalies.join('. ')}
