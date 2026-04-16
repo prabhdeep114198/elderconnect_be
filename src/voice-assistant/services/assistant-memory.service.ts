@@ -141,10 +141,14 @@ Return a JSON object matching this shape (all fields optional):
       updated.lastUpdated = new Date().toISOString();
 
       // Persist to DB (inside preferences JSONB, no migration needed)
-      await this.profileRepository.update(
-        { userId },
-        { preferences: { ...(await this.getFullPreferences(userId)), memory: updated } },
-      );
+      const profile = await this.profileRepository.findOne({ where: { userId } });
+      if (profile) {
+        profile.preferences = { 
+          ...(profile.preferences || {}), 
+          memory: updated 
+        };
+        await this.profileRepository.save(profile);
+      }
 
       this.logger.log(`[Memory] Updated memory for user ${userId}`);
     } catch (err) {
