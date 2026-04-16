@@ -21,6 +21,7 @@ import { Vitals } from '../device/entities/vitals.entity';
 import { PersonalizationService } from '../personalization/personalization.service';
 import { DailyHealthMetric } from '../profile/entities/daily-health-metric.entity';
 import { VoiceInteraction } from './entities/voice-interaction.entity';
+import { AssistantMemoryService } from './services/assistant-memory.service';
 
 // ─── Groq Config ─────────────────────────────────────────────────────────────
 const GROK_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
@@ -258,6 +259,7 @@ export class VoiceAssistantService {
         private readonly voiceInteractionRepository: Repository<VoiceInteraction>,
 
         private readonly personalizationService: PersonalizationService,
+        private readonly memoryService: AssistantMemoryService,
     ) {
         this.xaiApiKey =
             this.configService.get<string>('GROQ_API_KEY') ||
@@ -276,8 +278,12 @@ export class VoiceAssistantService {
 
         let parsed: ParsedIntent;
 
-        // ── Step 1: Gather Rich Context for AI ─────────────────────────────
-        const richContextBrief = await this.getRichUserContext(userId);
+        // ── Step 1: Load Memory + Gather Rich Context ──────────────────────────────
+        const [richContextBrief, userMemory] = await Promise.all([
+            this.getRichUserContext(userId),
+            this.memoryService.getMemory(userId),
+        ]);
+        const memoryBlock = this.memoryService.formatMemoryForPrompt(userMemory);
 
         if (isConfirmation && pendingIntent) {
             // User confirmed the action, bypass AI parsing and execute
@@ -286,7 +292,7 @@ export class VoiceAssistantService {
         } else {
             // ── Step 2: Call Grok Intent Parser ─────────────────────────────────
             try {
-                parsed = await this.callGrokIntentParser(text, jwt, richContextBrief);
+                parsed = await this.callGrokIntentParser(text, jwt, richContextBrief, memoryBlock);
             } catch (err) {
                 this.logger.error(`[VoiceAssistant] Grok Intent Parser failed: ${err.message}`);
                 return this.buildErrorResponse(text, 'Sorry, I had trouble understanding that. Could you please try again?', userId);
@@ -312,6 +318,12 @@ export class VoiceAssistantService {
                 isConversational: parsed.typeOfRequest === 'CONVERSATIONAL',
             });
             await this.voiceInteractionRepository.save(interaction);
+
+            // ── Background Memory Update (only for conversational intents) ───
+            if (parsed.typeOfRequest === 'CONVERSATIONAL') {
+                this.memoryService.updateMemoryFromConversation(userId, text, userMemory)
+                    .catch(err => this.logger.error(`[Memory] Background update failed: ${err.message}`));
+            }
         } catch (err) {
             this.logger.error(`[VoiceAssistant] Failed to log interaction: ${err.message}`);
         }
@@ -417,12 +429,18 @@ export class VoiceAssistantService {
     // ═══════════════════════════════════════════════════════════════════
     // Grok: Call Intent Parser
     // ═══════════════════════════════════════════════════════════════════
-    private async callGrokIntentParser(text: string, jwt: string, contextBrief?: string): Promise<ParsedIntent> {
+    private async callGrokIntentParser(text: string, jwt: string, contextBrief?: string, memoryBlock?: string): Promise<ParsedIntent> {
         if (!this.xaiApiKey) {
             throw new Error('No Grok API token configured (XAI_API_KEY or GROK_API_KEY)');
         }
 
-        const systemPromptWithContext = INTENT_SYSTEM_PROMPT.replace('{{userContext}}', contextBrief || 'No specific context provided.');
+        // Inject both the real-time user context AND the long-term memory into the system prompt
+        const fullContext = [
+            contextBrief || 'No specific context provided.',
+            memoryBlock ? `\n${memoryBlock}` : '',
+        ].join('\n');
+
+        const systemPromptWithContext = INTENT_SYSTEM_PROMPT.replace('{{userContext}}', fullContext);
 
         const payload = {
             model: GROK_MODEL,

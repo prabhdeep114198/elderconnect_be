@@ -13,7 +13,9 @@ import { DailyHealthMetric } from '../profile/entities/daily-health-metric.entit
 // Vitals entity
 import { Vitals } from '../device/entities/vitals.entity';
 import { VoiceInteraction } from './entities/voice-interaction.entity';
+import { AssistantMemoryService } from './services/assistant-memory.service';
 import { PersonalizationModule } from '../personalization/personalization.module';
+import { AiModule } from '../ai/ai.module';
 
 @Module({
     imports: [
@@ -29,9 +31,10 @@ import { PersonalizationModule } from '../personalization/personalization.module
             VoiceInteraction
         ], 'vitals'),
         PersonalizationModule,
+        AiModule,
     ],
     controllers: [VoiceAssistantController],
-    providers: [VoiceAssistantService],
-    exports: [VoiceAssistantService],
+    providers: [VoiceAssistantService, AssistantMemoryService],
+    exports: [VoiceAssistantService, AssistantMemoryService],
 })
 export class VoiceAssistantModule { }
