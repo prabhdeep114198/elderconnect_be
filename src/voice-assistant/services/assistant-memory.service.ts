@@ -9,6 +9,7 @@ import { AiEngineService } from '../../ai/ai-engine.service';
  * Stored inside UserProfile.preferences.memory as JSONB — no migration needed.
  */
 export interface UserMemory {
+  [key: string]: any; // Index signature to satisfy TypeORM JSONB storage
   name?: string;
   preferredLanguage?: string;           // 'en', 'hi', 'hi-en'
   healthConcerns?: string[];            // ['diabetes', 'knee pain']
