@@ -12,6 +12,7 @@ import { DailyHealthMetric } from '../profile/entities/daily-health-metric.entit
 
 // Vitals entity
 import { Vitals } from '../device/entities/vitals.entity';
+import { VoiceInteraction } from './entities/voice-interaction.entity';
 import { PersonalizationModule } from '../personalization/personalization.module';
 
 @Module({
@@ -24,7 +25,8 @@ import { PersonalizationModule } from '../personalization/personalization.module
             DailyHealthMetric
         ], 'profile'),
         TypeOrmModule.forFeature([
-            Vitals
+            Vitals,
+            VoiceInteraction
         ], 'vitals'),
         PersonalizationModule,
     ],

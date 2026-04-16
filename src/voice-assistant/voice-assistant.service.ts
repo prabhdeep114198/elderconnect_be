@@ -20,6 +20,7 @@ import { SocialEvent } from '../profile/entities/social-event.entity';
 import { Vitals } from '../device/entities/vitals.entity';
 import { PersonalizationService } from '../personalization/personalization.service';
 import { DailyHealthMetric } from '../profile/entities/daily-health-metric.entity';
+import { VoiceInteraction } from './entities/voice-interaction.entity';
 
 // ─── Groq Config ─────────────────────────────────────────────────────────────
 const GROK_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
@@ -253,6 +254,9 @@ export class VoiceAssistantService {
         @InjectRepository(DailyHealthMetric, 'profile')
         private readonly healthMetricRepository: Repository<DailyHealthMetric>,
 
+        @InjectRepository(VoiceInteraction, 'vitals')
+        private readonly voiceInteractionRepository: Repository<VoiceInteraction>,
+
         private readonly personalizationService: PersonalizationService,
     ) {
         this.xaiApiKey =
@@ -298,6 +302,19 @@ export class VoiceAssistantService {
         const originalText = text;
 
         this.logger.log(`[VoiceAssistant] Intent detected: ${parsed.typeOfRequest} | Message: ${parsed.message}`);
+
+        // ── Step 3: Persistence for Cognitive Analysis ──────────────────────
+        try {
+            const interaction = this.voiceInteractionRepository.create({
+                userId,
+                transcript: text,
+                intent: parsed.typeOfRequest,
+                isConversational: parsed.typeOfRequest === 'CONVERSATIONAL',
+            });
+            await this.voiceInteractionRepository.save(interaction);
+        } catch (err) {
+            this.logger.error(`[VoiceAssistant] Failed to log interaction: ${err.message}`);
+        }
 
         const requiresConfirmationTypes = ['CREATE_EVENT', 'LOG_VITAL', 'REMINDER'];
 

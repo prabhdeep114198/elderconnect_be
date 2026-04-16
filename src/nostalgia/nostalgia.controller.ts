@@ -99,4 +99,45 @@ export class NostalgiaController {
       data: { timeline, count: timeline.length },
     };
   }
+
+  @Get('assessments/:userId')
+  @ApiOperation({ summary: 'Get mental wellness & cognitive assessments for a user' })
+  @ApiResponse({ status: 200, description: 'Assessments retrieved successfully' })
+  @UseGuards(TierGuard)
+  @RequireTier(SubscriptionTier.PREMIUM, SubscriptionTier.ENTERPRISE)
+  async getAssessments(
+    @Param('userId') targetUserId: string,
+    @CurrentUser() currentUser,
+  ) {
+    if (currentUser.id !== targetUserId && !currentUser.roles.includes(UserRole.CAREGIVER)) {
+      throw new Error('Unauthorized access to assessments');
+    }
+
+    const assessments = await this.nostalgiaService.getAssessments(targetUserId);
+    return {
+      message: 'Assessments retrieved successfully',
+      data: { assessments },
+    };
+  }
+
+  @Post('evaluate-cognitive/:userId')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Manually trigger a cognitive shift evaluation based on recent voice logs' })
+  @ApiResponse({ status: 200, description: 'Evaluation completed' })
+  @UseGuards(TierGuard)
+  @RequireTier(SubscriptionTier.PREMIUM, SubscriptionTier.ENTERPRISE)
+  async evaluateCognitive(
+    @Param('userId') targetUserId: string,
+    @CurrentUser() currentUser,
+  ) {
+    if (currentUser.id !== targetUserId && !currentUser.roles.includes(UserRole.CAREGIVER)) {
+      throw new Error('Unauthorized cognitive evaluation trigger');
+    }
+
+    const result = await this.nostalgiaService.triggerCognitiveCheck(targetUserId);
+    return {
+      message: 'Cognitive evaluation completed',
+      data: { result },
+    };
+  }
 }

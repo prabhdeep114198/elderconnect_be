@@ -32,6 +32,12 @@ export class NostalgiaMemory {
   @Column('simple-json', { nullable: true })
   themes: string[];
 
+  @Column('float', { name: 'mood_score', nullable: true })
+  moodScore: number;
+
+  @Column({ name: 'mood_label', nullable: true })
+  moodLabel: string;
+
   @CreateDateColumn({ name: 'recorded_at' })
   recordedAt: Date;
 }

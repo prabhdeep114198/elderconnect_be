@@ -4,7 +4,10 @@ import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { BlobServiceClient } from '@azure/storage-blob';
 import { NostalgiaMemory } from './entities/nostalgia-memory.entity';
+import { CognitiveAssessment } from './entities/cognitive-assessment.entity';
+import { VoiceInteraction } from '../voice-assistant/entities/voice-interaction.entity';
 import { CreateMemoryDto } from './dto/nostalgia.dto';
+import { CognitiveAnalysisService } from './services/cognitive-analysis.service';
 import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -28,7 +31,12 @@ export class NostalgiaService {
   constructor(
     @InjectRepository(NostalgiaMemory, 'auth')
     private readonly memoryRepository: Repository<NostalgiaMemory>,
+    @InjectRepository(CognitiveAssessment, 'auth')
+    private readonly assessmentRepo: Repository<CognitiveAssessment>,
+    @InjectRepository(VoiceInteraction, 'vitals')
+    private readonly voiceInteractionRepo: Repository<VoiceInteraction>,
     private readonly configService: ConfigService,
+    private readonly cognitiveAnalysis: CognitiveAnalysisService,
   ) {
     this.xaiApiKey =
       this.configService.get<string>('GROQ_API_KEY') ||
@@ -135,7 +143,19 @@ ${recentTopics}`;
       themes: dto.themes || [],
     });
 
-    return await this.memoryRepository.save(memory);
+    const savedMemory = await this.memoryRepository.save(memory);
+
+    // Trigger background AI analysis for mood
+    try {
+      const assessment = await this.cognitiveAnalysis.analyzeMemoryMood(userId, dto.transcript);
+      savedMemory.moodScore = assessment.score;
+      savedMemory.moodLabel = assessment.label;
+      await this.memoryRepository.save(savedMemory);
+    } catch (err) {
+      this.logger.error(`AI Mood analysis failed for memory ${savedMemory.id}: ${err.message}`);
+    }
+
+    return savedMemory;
   }
 
   async getTimeline(userId: string): Promise<NostalgiaMemory[]> {
@@ -143,5 +163,17 @@ ${recentTopics}`;
       where: { userId },
       order: { recordedAt: 'DESC' },
     });
+  }
+
+  async getAssessments(userId: string): Promise<CognitiveAssessment[]> {
+    return await this.assessmentRepo.find({
+      where: { userId },
+      order: { createdAt: 'DESC' },
+      take: 50,
+    });
+  }
+
+  async triggerCognitiveCheck(userId: string): Promise<any> {
+    return await this.cognitiveAnalysis.runPeriodicCognitiveCheck(userId, this.voiceInteractionRepo);
   }
 }
