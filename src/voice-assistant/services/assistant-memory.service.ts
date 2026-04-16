@@ -1,8 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { UserProfile } from '../profile/entities/user-profile.entity';
-import { AiEngineService } from '../ai/ai-engine.service';
+import { UserProfile } from '../../profile/entities/user-profile.entity';
+import { AiEngineService } from '../../ai/ai-engine.service';
 
 /**
  * The shape of a user's persistent memory object.
