@@ -21,8 +21,14 @@ import { Appointment } from '../profile/entities/appointment.entity';
 import { MedicationLog } from '../profile/entities/medication-log.entity';
 import { Medication } from '../profile/entities/medication.entity';
 
+// NOTE: We import AiEngineService directly (not AiModule) to avoid a
+// circular dependency: AiModule → MonitoringModule → AiModule.
+import { ConfigModule } from '@nestjs/config';
+import { AiEngineService } from '../ai/ai-engine.service';
+
 @Module({
   imports: [
+    ConfigModule,
     TypeOrmModule.forFeature([
       DailyHealthMetric,
       UserProfile,
@@ -40,7 +46,14 @@ import { Medication } from '../profile/entities/medication.entity';
     ProfileModule,
   ],
   controllers: [HealthController, AnalyticsController, DebugController, FallRiskController],
-  providers: [HealthService, MetricsService, HealthAnalyticsService, FallRiskService],
+  providers: [
+    HealthService,
+    MetricsService,
+    HealthAnalyticsService,
+    FallRiskService,
+    // Provide AiEngineService locally within MonitoringModule to avoid circular dep
+    AiEngineService,
+  ],
   exports: [HealthService, MetricsService, HealthAnalyticsService, FallRiskService],
 })
 export class MonitoringModule { }
