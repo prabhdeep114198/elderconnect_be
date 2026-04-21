@@ -146,6 +146,31 @@ export class ProfileController {
   }
 
   // Medication Management
+  @Post('medications/check-interactions')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Check AI interactions for a new medication against active prescriptions' })
+  @ApiResponse({ status: 200, description: 'Interaction profile generated' })
+  async checkMedicationInteractions(
+    @Param('userId') userId: string,
+    @Body('medicationName') medicationName: string,
+    @CurrentUser() currentUser,
+  ) {
+    if (userId !== currentUser.id && !currentUser.roles.includes(UserRole.CAREGIVER) && !currentUser.roles.includes(UserRole.ADMIN)) {
+      throw new Error('Unauthorized to perform interaction checks for this user');
+    }
+
+    if (!medicationName) {
+      throw new Error('medicationName is required');
+    }
+
+    const interactionProfile = await this.profileService.checkMedicationInteractions(userId, medicationName);
+
+    return {
+      message: 'Medication interaction check completed',
+      data: interactionProfile,
+    };
+  }
+
   @Post('medications')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Add medication to user profile' })

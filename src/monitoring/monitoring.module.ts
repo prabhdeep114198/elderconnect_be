@@ -25,10 +25,12 @@ import { Medication } from '../profile/entities/medication.entity';
 // circular dependency: AiModule → MonitoringModule → AiModule.
 import { ConfigModule } from '@nestjs/config';
 import { AiEngineService } from '../ai/ai-engine.service';
+import { NotificationModule } from '../notification/notification.module';
 
 @Module({
   imports: [
     ConfigModule,
+    NotificationModule,
     TypeOrmModule.forFeature([
       DailyHealthMetric,
       UserProfile,

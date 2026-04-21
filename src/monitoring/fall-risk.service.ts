@@ -7,6 +7,7 @@ import { SOSAlert } from '../device/entities/sos-alert.entity';
 import { ProfileService } from '../profile/profile.service';
 import { AlertPriority } from '../common/enums/user-role.enum';
 import { AiEngineService } from '../ai/ai-engine.service';
+import { TwilioService } from '../notification/services/twilio.service';
 import { CoachingExercise, GaitClusters, MobilityCoachingPlan } from './fall-risk.types';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -148,6 +149,7 @@ export class FallRiskService {
         private readonly sosRepository: Repository<SOSAlert>,
         private readonly profileService: ProfileService,
         private readonly aiEngine: AiEngineService,
+        private readonly twilioService: TwilioService,
     ) { }
 
     // ── Private: Cluster Analysis ────────────────────────────────────────────
@@ -458,6 +460,42 @@ for their risk level and medical conditions.
         return Math.max(5, Math.min(95, score));
     }
 
+    // ── Private: Intelligent Caregiver Escalation ────────────────────────────
+
+    private async checkAndEscalateCriticalRisk(profile: UserProfile, currentScore: number): Promise<void> {
+        if (currentScore <= 70) return; // Only escalate CRITICAL
+
+        // Get persistent memory/preferences for rate limiting
+        const preferences = profile.preferences || {};
+        const lastEscalation = preferences.lastFallRiskEscalation ? new Date(preferences.lastFallRiskEscalation) : null;
+        
+        // 24-hour cooldown to prevent SMS spam
+        if (lastEscalation && (Date.now() - lastEscalation.getTime() < 24 * 60 * 60 * 1000)) {
+            return;
+        }
+
+        this.logger.warn(`User ${profile.userId} hit CRITICAL risk score (${currentScore}). Escalating to emergency contacts.`);
+
+        // Find primary emergency contact
+        const emergencyPhone = profile.emergencyContactPhone;
+        const emergencyName = profile.emergencyContactName || 'Emergency Contact';
+
+        if (emergencyPhone) {
+            const message = `ElderConnect Alert: ${emergencyName}, the monitored user has reached a CRITICAL Fall Risk Score of ${Math.round(currentScore)}. Suggested Action: Consider a quick check-in call to ensure they are feeling steady today and haven't skipped their medications.`;
+            
+            try {
+                await this.twilioService.sendSMS(emergencyPhone, message, 'high');
+                
+                // Update timestamp
+                preferences.lastFallRiskEscalation = new Date().toISOString();
+                profile.preferences = preferences;
+                await this.profileRepository.save(profile);
+            } catch (err) {
+                this.logger.error(`Failed to send escalation SMS: ${err.message}`);
+            }
+        }
+    }
+
     // ── Public API Methods ───────────────────────────────────────────────────
 
     async getAnalysis(userId: string) {
@@ -481,6 +519,13 @@ for their risk level and medical conditions.
 
         // 3. Compute multi-factor overall score
         const currentScore = this.computeMultiFactorGaitScore(profile, metrics, gaitClusters);
+
+        // 3.5. Background Intelligent Escalation if Critical
+        if (profile) {
+            this.checkAndEscalateCriticalRisk(profile, currentScore).catch(e => 
+                this.logger.error(`Escalation background thread failed: ${e.message}`)
+            );
+        }
 
         // 4. Build trend-aware forecasts based on cluster shift direction
         // If sedentary is dominant and rising, risk goes up; else down

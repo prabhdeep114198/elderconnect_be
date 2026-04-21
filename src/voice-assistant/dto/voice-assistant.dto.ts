@@ -98,5 +98,6 @@ export interface VoiceAssistantResponse {
     appointmentId?: string;
     requiresConfirmation?: boolean;
     pendingIntent?: any;
+    cognitiveLoad?: 'normal' | 'high';
     data?: any;
 }

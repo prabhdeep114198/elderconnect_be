@@ -19,6 +19,7 @@ import { SocialEvent } from './entities/social-event.entity';
 import { UpdateHealthMetricDto } from './dto/update-health-metric.dto';
 import { User } from '../auth/entities/user.entity';
 import { UserRole } from '../common/enums/user-role.enum';
+import { AiEngineService } from '../ai/ai-engine.service';
 
 @Injectable()
 export class ProfileService {
@@ -38,6 +39,7 @@ export class ProfileService {
     @InjectRepository(User, 'auth')
     private readonly userRepository: Repository<User>,
     private readonly cacheService: CacheService,
+    private readonly aiEngine: AiEngineService,
   ) { }
 
   // Profile Management
@@ -196,6 +198,45 @@ export class ProfileService {
   async deleteMedication(userId: string, medicationId: string): Promise<void> {
     const medication = await this.getMedication(userId, medicationId);
     await this.medicationRepository.remove(medication);
+  }
+
+  // AI Medication Intelligence
+  async checkMedicationInteractions(userId: string, newMedicationName: string): Promise<any> {
+    const profile = await this.getProfile(userId);
+    const existingMeds = await this.medicationRepository.find({
+      where: { userProfileId: profile.id, isActive: true },
+    });
+
+    const activeMedNames = existingMeds.map(m => m.name);
+    const conditions = profile.medicalConditions || [];
+
+    const prompt = `
+You are a clinical AI reviewing a new medication for an elderly patient.
+Patient Medical Conditions: ${conditions.length ? conditions.join(', ') : 'None'}
+Current Active Medications: ${activeMedNames.length ? activeMedNames.join(', ') : 'None'}
+New Medication Attempting to Add: ${newMedicationName}
+
+Determine if this new medication is generally safe or poses significant interactions/side-effects (e.g. drowsiness, fall risk).
+Respond strictly in JSON format.
+{
+  "safe": boolean,
+  "warnings": ["string warning message..."],
+  "drowsinessRisk": boolean,
+  "summary": "Brief 1-sentence plain-text summary of the interaction profile"
+}
+`;
+    try {
+      const response = await this.aiEngine.generateStructuredResponse(prompt, 'Analyze this medication configuration.');
+      return response;
+    } catch (err) {
+      // Fallback
+      return {
+        safe: true,
+        warnings: [],
+        drowsinessRisk: false,
+        summary: "Notice: AI Interaction checking is temporarily down. Always consult your doctor."
+      };
+    }
   }
 
   // Medication Logging
@@ -435,7 +476,7 @@ export class ProfileService {
         });
       }
 
-      // Check for refill reminders
+        // Check for refill reminders
       if (medication.needsRefill) {
         reminders.push({
           type: 'refill',
@@ -447,9 +488,56 @@ export class ProfileService {
       }
     }
 
-    return reminders.sort((a, b) =>
+    const sortedReminders = reminders.sort((a, b) =>
       (a.reminderTime || new Date()).getTime() - (b.reminderTime || new Date()).getTime()
     );
+
+    // AI Nostalgic Enhancement
+    const memory = (profile.preferences?.memory || {}) as any;
+    if (Object.keys(memory).length > 0 && sortedReminders.length > 0) {
+      try {
+        const cacheKey = `nostalgic_messages:${userId}`;
+        let cachedMessages = await this.cacheService.get<Record<string, string>>(cacheKey);
+
+        if (!cachedMessages) {
+          const prompt = `
+You are a warm, nostalgic AI generating personalized medication reminders for an elderly adult.
+Below are their upcoming medications and their stored memory context.
+Return EXACTLY an array of JSON objects matching the input array order, but add a "personalizedMessage" field to each item.
+For example, if memory says they love evening tea, say "Just like you used to have your evening tea at 4 PM, it's time for your [Meds]." Combine warm memories creatively but naturally.
+
+Memory Context: ${JSON.stringify(memory)}
+Upcoming Reminders: ${JSON.stringify(sortedReminders.map(r => r.medicationName))}
+
+Expected strict JSON output format:
+{
+  "enrichedReminders": [
+    { "personalizedMessage": "warm message string" }
+  ]
+}
+`;
+          const res = await this.aiEngine.generateStructuredResponse(prompt, 'Generate nostalgic messages');
+          cachedMessages = {};
+          res.enrichedReminders?.forEach((item: any, idx: number) => {
+            if (sortedReminders[idx]) {
+              cachedMessages![sortedReminders[idx].medicationName] = item.personalizedMessage;
+            }
+          });
+          await this.cacheService.set(cacheKey, cachedMessages, { ttl: 21600 } as any); // 6 hours
+        }
+
+        // Apply cached or newly generated messages
+        sortedReminders.forEach(r => {
+          if (cachedMessages && cachedMessages[r.medicationName]) {
+            r.personalizedMessage = cachedMessages[r.medicationName];
+          }
+        });
+      } catch (err) {
+        // Fallback: Skip personalization if AI fails
+      }
+    }
+
+    return sortedReminders;
   }
 
   async getHealthSummary(userId: string): Promise<any> {

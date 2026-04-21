@@ -285,6 +285,20 @@ export class VoiceAssistantService {
         ]);
         const memoryBlock = this.memoryService.formatMemoryForPrompt(userMemory);
 
+        // Compute Cognitive Load from recent interactions
+        let cognitiveLoad: 'normal' | 'high' = 'normal';
+        try {
+            const recentLogs = await this.voiceInteractionRepository.find({
+                where: { userId },
+                order: { createdAt: 'DESC' },
+                take: 5
+            });
+            const struggles = recentLogs.filter(log => log.intent === 'ERROR' || log.intent === 'UNKNOWN').length;
+            if (struggles >= 2) {
+                cognitiveLoad = 'high';
+            }
+        } catch (e) {}
+
         if (isConfirmation && pendingIntent) {
             // User confirmed the action, bypass AI parsing and execute
             this.logger.log(`[VoiceAssistant] Executing pre-confirmed intent for user ${userId}`);
@@ -292,7 +306,7 @@ export class VoiceAssistantService {
         } else {
             // ── Step 2: Call Grok Intent Parser ─────────────────────────────────
             try {
-                parsed = await this.callGrokIntentParser(text, jwt, richContextBrief, memoryBlock);
+                parsed = await this.callGrokIntentParser(text, jwt, richContextBrief, memoryBlock, cognitiveLoad);
             } catch (err) {
                 this.logger.error(`[VoiceAssistant] Grok Intent Parser failed: ${err.message}`);
                 return this.buildErrorResponse(text, 'Sorry, I had trouble understanding that. Could you please try again?', userId);
@@ -346,7 +360,8 @@ export class VoiceAssistantService {
         }
 
         // ── Step 3: Route by action (Execution phase) ───────────────────
-        switch (parsed.typeOfRequest as IntentType) {
+        const executeAction = async (): Promise<VoiceAssistantResponse> => {
+            switch (parsed.typeOfRequest as IntentType) {
             case 'CREATE_EVENT':
                 return this.handleCreateEvent(parsed, userId, originalText);
 
@@ -423,13 +438,24 @@ export class VoiceAssistantService {
                     message: parsed.message || "I'm not sure what you mean. Could you rephrase?",
                     timestamp: new Date().toISOString(),
                 };
-        }
+            }
+        };
+
+        const finalResponse = await executeAction();
+        finalResponse.cognitiveLoad = cognitiveLoad;
+        return finalResponse;
     }
 
     // ═══════════════════════════════════════════════════════════════════
     // Grok: Call Intent Parser
     // ═══════════════════════════════════════════════════════════════════
-    private async callGrokIntentParser(text: string, jwt: string, contextBrief?: string, memoryBlock?: string): Promise<ParsedIntent> {
+    private async callGrokIntentParser(
+        text: string, 
+        jwt: string, 
+        contextBrief?: string, 
+        memoryBlock?: string,
+        cognitiveLoad?: 'normal' | 'high'
+    ): Promise<ParsedIntent> {
         if (!this.xaiApiKey) {
             throw new Error('No Grok API token configured (XAI_API_KEY or GROK_API_KEY)');
         }
@@ -438,7 +464,8 @@ export class VoiceAssistantService {
         const fullContext = [
             contextBrief || 'No specific context provided.',
             memoryBlock ? `\n${memoryBlock}` : '',
-        ].join('\n');
+            cognitiveLoad === 'high' ? '\n[SYSTEM DIRECTIVE]: User appears to be struggling (cognitive load high). Use highly simplified, slow, and short sentences in your response.' : ''
+        ].filter(Boolean).join('\n');
 
         const systemPromptWithContext = INTENT_SYSTEM_PROMPT.replace('{{userContext}}', fullContext);
 

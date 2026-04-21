@@ -143,6 +143,25 @@ export class AnalyticsController {
         };
     }
 
+    @Get('caregiver-highlights')
+    @ApiOperation({ summary: 'Get AI-generated weekly highlights for caregiver' })
+    @ApiResponse({ status: 200, description: 'Highlights retrieved successfully' })
+    async getCaregiverHighlights(
+        @Param('userId') userId: string,
+        @CurrentUser() currentUser: any,
+    ): Promise<any> {
+        if (!currentUser.roles.includes(UserRole.CAREGIVER) && !currentUser.roles.includes(UserRole.ADMIN)) {
+            throw new ForbiddenException('Only caregivers and admins can view highlights');
+        }
+
+        const highlights = await this.analyticsService.getCaregiverHighlights(userId);
+
+        return {
+            message: 'Caregiver highlights generated successfully',
+            data: highlights,
+        };
+    }
+
     @Get('seed')
     @ApiOperation({ summary: 'Seed sample analytics data for the user (Dev purposes)' })
     @ApiResponse({ status: 200, description: 'Data seeded successfully' })
