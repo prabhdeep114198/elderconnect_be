@@ -377,7 +377,7 @@ export class DeviceService {
         const location =
           currentAlert.latitude && currentAlert.longitude
             ? { latitude: currentAlert.latitude, longitude: currentAlert.longitude }
-            : { latitude: 28.503857484502184, longitude: 77.04982280950247 };
+            : undefined; // No phone location — SMS sent without map link
 
         // Direct call — no Kafka involved
         await this.notificationService.sendEmergencyAlert(

@@ -10,12 +10,14 @@ import { FCMService } from './services/fcm.service';
 import { KafkaService } from '../device/services/kafka.service';
 import { DeviceModule } from '../device/device.module';
 import { AuditLogModule } from '../common/services/audit-log.module';
+import { UserProfile } from '../profile/entities/user-profile.entity';
 
 import { HttpModule } from '@nestjs/axios';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Notification, NotificationTemplate], 'audit'),
+    TypeOrmModule.forFeature([UserProfile], 'profile'),
     AuditLogModule,
     HttpModule,
     forwardRef(() => DeviceModule),

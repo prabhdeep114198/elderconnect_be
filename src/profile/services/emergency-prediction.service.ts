@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DailyHealthMetric } from '../entities/daily-health-metric.entity';
-import { Between } from 'typeorm';
+import { Repository, Between } from 'typeorm';
 import { AiEngineService } from '../../ai/ai-engine.service';
 import {
   EmergencyRiskLog,
@@ -14,6 +14,7 @@ import {
 } from '../../notification/entities/notification.entity';
 import { AlertPriority } from '../../common/enums/user-role.enum';
 import { UserProfile } from '../entities/user-profile.entity';
+import { FeatureFlagsService } from '../../common/services/feature-flags.service';
 
 @Injectable()
 export class EmergencyPredictionService {
@@ -26,6 +27,7 @@ export class EmergencyPredictionService {
     private readonly healthMetricRepository: Repository<DailyHealthMetric>,
     private readonly notificationService: NotificationService,
     private readonly aiEngine: AiEngineService,
+    private readonly featureFlags: FeatureFlagsService,
   ) { }
 
   /**
@@ -35,6 +37,13 @@ export class EmergencyPredictionService {
     this.logger.log(
       `Evaluating Emergency Risk for User ${metric.userProfileId}`,
     );
+
+    // 0. Check Feature Flag
+    const isEnabled = await this.featureFlags.isFeatureEnabled('proactive_emergency_check');
+    if (!isEnabled) {
+      this.logger.log('Proactive emergency check is disabled via feature flags.');
+      return;
+    }
 
     // 1. Fetch historical context (last 24 hours) for AI comparison
     const yesterday = new Date();

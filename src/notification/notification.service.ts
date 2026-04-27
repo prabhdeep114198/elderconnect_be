@@ -10,6 +10,7 @@ import { Repository, In, MoreThan, Between } from 'typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Notification, NotificationType, NotificationStatus, NotificationCategory } from './entities/notification.entity';
 import { NotificationTemplate } from './entities/notification-template.entity';
+import { UserProfile } from '../profile/entities/user-profile.entity';
 import { TwilioService } from './services/twilio.service';
 import { FCMService } from './services/fcm.service';
 import { KafkaService } from '../device/services/kafka.service';
@@ -49,6 +50,8 @@ export class NotificationService implements OnModuleInit {
     private readonly notificationRepository: Repository<Notification>,
     @InjectRepository(NotificationTemplate, 'audit')
     private readonly templateRepository: Repository<NotificationTemplate>,
+    @InjectRepository(UserProfile, 'profile')
+    private readonly userProfileRepository: Repository<UserProfile>,
     private readonly twilioService: TwilioService,
     private readonly fcmService: FCMService,
     private readonly kafkaService: KafkaService,
@@ -421,6 +424,7 @@ export class NotificationService implements OnModuleInit {
     this.logger.log(`🚨 Triggering SOS emergency notification for user ${userId}`);
     const notifications: Notification[] = [];
 
+    // 1. Notify designated emergency contacts
     for (const contact of emergencyContacts) {
       // Send SMS if phone number available
       if (contact.phone) {
@@ -455,6 +459,65 @@ export class NotificationService implements OnModuleInit {
         });
         notifications.push(pushNotification);
       }
+    }
+
+    // 2. BROADCAST to Nearby ElderConnect Accounts
+    // This implements the "Nearby Device Alert" logic
+    try {
+      const nearbyNotifications = await this.broadcastToNearbyResponders(userId, alertType, location);
+      notifications.push(...nearbyNotifications);
+    } catch (err) {
+      this.logger.error(`Nearby broadcast failed: ${err.message}`);
+    }
+
+    return notifications;
+  }
+
+  /**
+   * Finds other ElderConnect users in the same neighborhood (Zip Code / City)
+   * and sends them a "Nearby Emergency" alert.
+   */
+  private async broadcastToNearbyResponders(
+    elderUserId: string,
+    alertType: string,
+    location?: { latitude: number; longitude: number }
+  ): Promise<Notification[]> {
+    const elderProfile = await this.userProfileRepository.findOne({ where: { userId: elderUserId } });
+    if (!elderProfile || (!elderProfile.zipCode && !elderProfile.city)) return [];
+
+    // Find other active users in the same zip code or city who are NOT the elder
+    // In a real production app, we would use PostGIS for radius-based search
+    const nearbyProfiles = await this.userProfileRepository.find({
+      where: [
+        { zipCode: elderProfile.zipCode, isActive: true },
+        { city: elderProfile.city, isActive: true }
+      ],
+      take: 10 // Limit to top 10 nearby responders to prevent noise
+    });
+
+    const responders = nearbyProfiles.filter(p => p.userId !== elderUserId);
+    const notifications: Notification[] = [];
+
+    this.logger.log(`Found ${responders.length} nearby potential responders in ${elderProfile.zipCode || elderProfile.city}`);
+
+    for (const responder of responders) {
+      const nearbyAlert = await this.createNotification({
+        userId: elderUserId, // Original subject
+        recipientId: responder.userId, // Who receives it
+        type: NotificationType.PUSH,
+        category: NotificationCategory.SOS_ALERT,
+        title: `🚨 NEARBY EMERGENCY`,
+        message: `A neighbor (${elderProfile.userId.substring(0, 5)}...) needs immediate help nearby. Are you available to check?`,
+        priority: AlertPriority.HIGH,
+        data: { 
+          alertType, 
+          location, 
+          isNearbyAlert: true,
+          elderId: elderUserId 
+        },
+        expirationHours: 1, // Nearby alerts expire quickly
+      });
+      notifications.push(nearbyAlert);
     }
 
     return notifications;

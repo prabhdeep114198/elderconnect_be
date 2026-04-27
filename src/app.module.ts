@@ -45,6 +45,7 @@ import { VoiceAssistantModule } from './voice-assistant/voice-assistant.module';
 import { NostalgiaModule } from './nostalgia/nostalgia.module';
 import { AiModule } from './ai/ai.module';
 import { DeteriorationModule } from './deterioration/deterioration.module';
+import { FeatureFlagsModule } from './common/services/feature-flags.module';
 
 // Common interceptors
 import { AuditLogInterceptor } from './common/interceptors/audit-log.interceptor';
@@ -257,6 +258,7 @@ import { NostalgiaMemory } from './nostalgia/entities/nostalgia-memory.entity';
     NostalgiaModule,
     AiModule,
     DeteriorationModule,
+    FeatureFlagsModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

@@ -39,6 +39,7 @@ export class EmergencyRiskLog {
     forecastProbability: number;
     adherencePenalty: number;
     vitalSpikes?: string[];
+    aiReasoning?: string;
   };
 
   @Column({ type: 'boolean', default: false })
