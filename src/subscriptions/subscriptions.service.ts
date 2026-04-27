@@ -4,7 +4,6 @@ import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import Razorpay from 'razorpay';
 import * as crypto from 'crypto';
-import { Flagsmith } from 'flagsmith-nodejs';
 import { Subscription, SubscriptionStatus } from './entities/subscription.entity';
 import { SubscriptionTier } from '../common/enums/subscription-tier.enum';
 import { User } from '../auth/entities/user.entity';
@@ -13,7 +12,6 @@ import { VerifyPaymentDto } from './dto/verify-payment.dto';
 import { CacheService } from '../common/services/cache.service';
 
 import { FeatureFlagsService } from '../common/services/feature-flags.service';
-import { Subscription, SubscriptionStatus } from './entities/subscription.entity';
 
 @Injectable()
 export class SubscriptionsService {
