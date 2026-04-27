@@ -12,10 +12,12 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { VerifyPaymentDto } from './dto/verify-payment.dto';
 import { CacheService } from '../common/services/cache.service';
 
+import { FeatureFlagsService } from '../common/services/feature-flags.service';
+import { Subscription, SubscriptionStatus } from './entities/subscription.entity';
+
 @Injectable()
 export class SubscriptionsService {
     private razorpay: any;
-    private flagsmith: Flagsmith;
     private readonly logger = new Logger(SubscriptionsService.name);
 
     constructor(
@@ -25,6 +27,7 @@ export class SubscriptionsService {
         private userRepository: Repository<User>,
         private configService: ConfigService,
         private cacheService: CacheService,
+        private featureFlags: FeatureFlagsService,
     ) {
         const keyId = this.configService.get<string>('RAZORPAY_KEY_ID');
         const keySecret = this.configService.get<string>('RAZORPAY_KEY_SECRET');
@@ -36,10 +39,6 @@ export class SubscriptionsService {
         this.razorpay = new Razorpay({
             key_id: keyId || '',
             key_secret: keySecret || '',
-        });
-
-        this.flagsmith = new Flagsmith({
-            environmentKey: this.configService.get<string>('FLAGSMITH_ENVIRONMENT_KEY') || '',
         });
     }
 
@@ -301,18 +300,13 @@ export class SubscriptionsService {
     }
 
     async syncFlagsmithTraits(user: User) {
-        try {
-            const identifier = user.email;
-            const traits = {
-                is_subscribed: user.isSubscribed,
-                subscription_expiry: user.subscriptionExpiresAt?.toISOString() || '',
-                user_role: user.roles[0],
-            };
-            await this.flagsmith.getIdentityFlags(identifier, traits);
-            this.logger.log(`Synced Flagsmith traits for user: ${user.email}`);
-        } catch (error: any) {
-            this.logger.error(`Error syncing with Flagsmith: ${error.message}`);
-        }
+        const identifier = user.email;
+        const traits = {
+            is_subscribed: user.isSubscribed,
+            subscription_expiry: user.subscriptionExpiresAt?.toISOString() || '',
+            user_role: user.roles[0],
+        };
+        await this.featureFlags.syncUserTraits(identifier, traits);
     }
 
     async checkSubscriptionStatus(userId: string) {

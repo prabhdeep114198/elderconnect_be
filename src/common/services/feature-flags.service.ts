@@ -60,4 +60,18 @@ export class FeatureFlagsService implements OnModuleInit {
       return null;
     }
   }
+
+  /**
+   * Sync user traits to Flagsmith.
+   * @param userEmail The user's email/identifier
+   * @param traits Key-value pairs of traits
+   */
+  async syncUserTraits(userEmail: string, traits: Record<string, any>): Promise<void> {
+    try {
+      await this.flagsmith.getIdentityFlags(userEmail, traits);
+      this.logger.log(`Synced traits for ${userEmail} to Flagsmith`);
+    } catch (error) {
+      this.logger.error(`Error syncing traits for ${userEmail}: ${error.message}`);
+    }
+  }
 }
