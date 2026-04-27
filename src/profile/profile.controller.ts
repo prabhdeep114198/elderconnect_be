@@ -27,7 +27,7 @@ import { UserRole } from '../common/enums/user-role.enum';
 
 @ApiTags('User Profile')
 @Controller('v1/users/:userId')
-@UseGuards(AuthGuard(['jwt', 'firebase']), RolesGuard)
+@UseGuards(AuthGuard('jwt'), RolesGuard)
 @UseInterceptors(AuditLogInterceptor)
 @ApiBearerAuth()
 export class ProfileController {

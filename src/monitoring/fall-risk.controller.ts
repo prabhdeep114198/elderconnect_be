@@ -20,7 +20,7 @@ import { UserRole } from '../common/enums/user-role.enum';
 
 @ApiTags('Fall Risk Monitoring')
 @Controller('v1/fall-risk')
-@UseGuards(AuthGuard(['jwt', 'firebase']))
+@UseGuards(AuthGuard('jwt'))
 @ApiBearerAuth()
 export class FallRiskController {
     constructor(private readonly fallRiskService: FallRiskService) { }

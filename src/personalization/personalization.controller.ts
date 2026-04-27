@@ -8,7 +8,7 @@ import { CreateInteractionDto, PersonalizationResponseDto } from './dto/personal
 
 @ApiTags('Personalization')
 @Controller('v1/personalization')
-@UseGuards(AuthGuard(['jwt', 'firebase']), RolesGuard)
+@UseGuards(AuthGuard('jwt'), RolesGuard)
 @ApiBearerAuth()
 export class PersonalizationController {
     private readonly logger = new Logger(PersonalizationController.name);

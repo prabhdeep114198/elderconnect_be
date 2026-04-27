@@ -3,7 +3,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { ApiKeyGuard } from './api-key.guard';
 
 @Injectable()
-export class DeviceAuthGuard extends AuthGuard(['jwt', 'firebase']) {
+export class DeviceAuthGuard extends AuthGuard('jwt') {
     constructor(private readonly apiKeyGuard: ApiKeyGuard) {
         super();
     }

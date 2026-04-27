@@ -135,7 +135,7 @@ export class AuthController {
   }
 
   @Get('devices')
-  @UseGuards(AuthGuard(['jwt', 'firebase']))
+  @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get user devices' })
   @ApiResponse({ status: 200, description: 'Devices retrieved successfully' })
@@ -150,7 +150,7 @@ export class AuthController {
   }
 
   @Delete('devices/:deviceId')
-  @UseGuards(AuthGuard(['jwt', 'firebase']))
+  @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth()
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Deactivate a device' })

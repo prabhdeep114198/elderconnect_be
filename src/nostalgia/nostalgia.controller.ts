@@ -27,7 +27,7 @@ import { SubscriptionTier } from '../common/enums/subscription-tier.enum';
 
 @ApiTags('Nostalgia AI')
 @Controller('v1/nostalgia')
-@UseGuards(AuthGuard(['jwt', 'firebase']), RolesGuard)
+@UseGuards(AuthGuard('jwt'), RolesGuard)
 @ApiBearerAuth()
 export class NostalgiaController {
   constructor(private readonly nostalgiaService: NostalgiaService) {}

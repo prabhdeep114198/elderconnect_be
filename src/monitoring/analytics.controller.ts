@@ -22,7 +22,7 @@ import { AnalyticsQueryDto } from './dto/analytics-query.dto';
 
 @ApiTags('Analytics')
 @Controller('v1/users/:userId/analytics')
-@UseGuards(AuthGuard(['jwt', 'firebase']), RolesGuard)
+@UseGuards(AuthGuard('jwt'), RolesGuard)
 @UseInterceptors(AuditLogInterceptor)
 @ApiBearerAuth()
 export class AnalyticsController {
