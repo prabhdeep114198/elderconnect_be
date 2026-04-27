@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 
 import { HealthController } from './health.controller';
 import { HealthService } from './health.service';
@@ -45,7 +45,7 @@ import { NotificationModule } from '../notification/notification.module';
       TelemetryData,
       SOSAlert
     ], 'vitals'),
-    ProfileModule,
+    forwardRef(() => ProfileModule),
   ],
   controllers: [HealthController, AnalyticsController, DebugController, FallRiskController],
   providers: [

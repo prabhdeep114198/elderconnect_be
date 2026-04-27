@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AiEngineService } from './ai-engine.service';
 import { XaiService } from './xai.service';
@@ -10,11 +10,11 @@ import { MonitoringModule } from '../monitoring/monitoring.module';
 @Module({
   imports: [
     HealthScoreModule,
-    ProfileModule,
-    MonitoringModule,
+    forwardRef(() => ProfileModule),
+    forwardRef(() => MonitoringModule),
   ],
   controllers: [XaiController],
   providers: [AiEngineService, XaiService],
-  exports: [XaiService],
+  exports: [AiEngineService, XaiService],
 })
 export class AiModule {}

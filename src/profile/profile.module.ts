@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ProfileController } from './profile.controller';
 import { ProfileService } from './profile.service';
@@ -23,7 +23,7 @@ import { AiModule } from '../ai/ai.module';
   imports: [
     NotificationModule,
     CommonCacheModule,
-    AiModule,
+    forwardRef(() => AiModule),
     TypeOrmModule.forFeature([
       UserProfile,
       Medication,

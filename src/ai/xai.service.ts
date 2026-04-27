@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { HealthScoreService } from '../health-score/services/health-score.service';
 import { ProfileService } from '../profile/profile.service';
 import { HealthAnalyticsService } from '../monitoring/analytics.service';
@@ -11,7 +11,9 @@ export class XaiService {
 
   constructor(
     private healthScoreService: HealthScoreService,
+    @Inject(forwardRef(() => ProfileService))
     private profileService: ProfileService,
+    @Inject(forwardRef(() => HealthAnalyticsService))
     private analyticsService: HealthAnalyticsService,
     private aiEngine: AiEngineService,
   ) {}
